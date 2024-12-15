@@ -23,11 +23,6 @@ type Value interface {
 
 type Symbol string
 
-func Tokenize(data []byte, source string) ([]*Token, error) {
-	t := newTokenizer(data, source)
-	return t.Tokenize()
-}
-
 func Parse(data []byte, source string) (*Document, error) {
 	p := newParser(data, source)
 	return p.Parse()

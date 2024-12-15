@@ -8,16 +8,17 @@ import (
 type parser struct {
 	source   string
 	data     []byte
+	lines    []string
 	tokens   []*Token
 	endPoint Point
-
-	doc *Document
+	doc      *Document
 }
 
 func newParser(data []byte, source string) *parser {
 	return &parser{
 		source: source,
 		data:   data,
+		lines:  splitLines(data),
 
 		doc: &Document{},
 	}
@@ -27,10 +28,11 @@ func (p *parser) Parse() (doc *Document, err error) {
 	defer func() {
 		if v := recover(); v != nil {
 			if verr, ok := v.(error); ok {
-				var syntaxError *SyntaxError
+				var syntaxErr *SyntaxError
 
-				if errors.As(verr, &syntaxError) {
-					err = verr
+				if errors.As(verr, &syntaxErr) {
+					syntaxErr.Lines = p.lines
+					err = ParseErrors{verr}
 					return
 				}
 			}
@@ -153,7 +155,7 @@ func (p *parser) parseElement() Element {
 
 	return &Entry{
 		Name:   nameToken.Value.(string),
-		Values: append([]Value{tokenValue(token)}, values...),
+		Values: append([]Value{p.tokenValue(token)}, values...),
 	}
 }
 
@@ -196,26 +198,13 @@ func (p *parser) parseEntryValues() []Value {
 			break
 		}
 
-		switch token.Type {
-		case TokenTypeSymbol:
-			fallthrough
-		case TokenTypeString:
-			fallthrough
-		case TokenTypeInteger:
-			fallthrough
-		case TokenTypeFloat:
-			values = append(values, tokenValue(token))
-
-		default:
-			panic(p.tokenSyntaxError(token, "invalid token, expected symbol, "+
-				"string, integer or float"))
-		}
+		values = append(values, p.tokenValue(token))
 	}
 
 	return values
 }
 
-func tokenValue(t *Token) Value {
+func (p *parser) tokenValue(t *Token) Value {
 	switch t.Type {
 	case TokenTypeSymbol:
 		s := t.Value.(string)
@@ -240,6 +229,7 @@ func tokenValue(t *Token) Value {
 		return t.Value.(float64)
 
 	default:
-		panic(fmt.Sprintf("unhandle token type %q", t.Type))
+		panic(p.tokenSyntaxError(t, "invalid token, expected symbol, "+
+			"string, integer or float"))
 	}
 }

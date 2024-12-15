@@ -9,6 +9,6 @@ func cmdValidate(p *program.Program) {
 	source, data := readFileOrStdin(p.OptionalArgumentValue("path"))
 
 	if _, err := bcl.Parse(data, source); err != nil {
-		p.Fatal("cannot parse document: %v", err)
+		p.Fatal("cannot parse document:\n%v", err)
 	}
 }

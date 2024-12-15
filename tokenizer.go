@@ -6,20 +6,6 @@ import (
 	"unicode/utf8"
 )
 
-type SyntaxError struct {
-	Source      string
-	Location    Span
-	Description string
-}
-
-func (err *SyntaxError) Error() string {
-	msg := err.Location.String() + ": " + err.Description
-	if err.Source != "" {
-		msg = err.Source + ":" + msg
-	}
-	return msg
-}
-
 type TokenType string
 
 const (
@@ -75,30 +61,6 @@ func (t *tokenizer) syntaxErrorAt(span Span, format string, args ...any) error {
 		Location:    span,
 		Description: fmt.Sprintf(format, args...),
 	}
-}
-
-func (t *tokenizer) Tokenize() (tokens []*Token, err error) {
-	defer func() {
-		if v := recover(); v != nil {
-			if verr, ok := v.(error); ok {
-				err = verr
-				return
-			}
-
-			panic(v)
-		}
-	}()
-
-	for {
-		token := t.readToken()
-		if token == nil {
-			break
-		}
-
-		tokens = append(tokens, token)
-	}
-
-	return
 }
 
 func (t *tokenizer) readToken() *Token {

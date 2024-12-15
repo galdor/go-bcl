@@ -11,7 +11,7 @@ func cmdFormat(p *program.Program) {
 
 	doc, err := bcl.Parse(data, source)
 	if err != nil {
-		p.Fatal("cannot parse document: %v", err)
+		p.Fatal("cannot parse document:\n%v", err)
 	}
 
 	// TODO

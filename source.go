@@ -1,6 +1,46 @@
 package bcl
 
-import "fmt"
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"regexp"
+	"strings"
+)
+
+type ParseErrors []error
+
+func (errs ParseErrors) Error() string {
+	var buf bytes.Buffer
+
+	for _, err := range errs {
+		fmt.Fprintln(&buf, err)
+
+		var syntaxErr *SyntaxError
+		if errors.As(err, &syntaxErr) {
+			syntaxErr.Location.PrintSource(&buf, syntaxErr.Lines, 2, "  ")
+		}
+	}
+
+	return strings.TrimRight(buf.String(), "\n")
+}
+
+type SyntaxError struct {
+	Source      string
+	Lines       []string
+	Location    Span
+	Description string
+}
+
+func (err *SyntaxError) Error() string {
+	msg := err.Location.String() + ": " + err.Description
+	if err.Source != "" {
+		msg = err.Source + ":" + msg
+	}
+	return msg
+}
 
 type Point struct {
 	Offset int
@@ -35,4 +75,70 @@ func (s Span) Point() (Point, bool) {
 	}
 
 	return Point{}, false
+}
+
+func (s Span) PrintSource(w io.Writer, lines []string, context int, indent string) {
+	nbLineDigits := int(math.Floor(math.Log10(float64(len(lines)))) + 1)
+	offset := nbLineDigits + 3
+
+	printLine := func(l int) {
+		fmt.Fprintf(w, "%s%*d │ ", indent, nbLineDigits, l+1)
+		fmt.Fprintln(w, lines[l])
+	}
+
+	lstart := s.Start.Line - 1
+	lend := s.End.Line - 1
+
+	for l := max(lstart-context, 0); l < lstart; l++ {
+		printLine(l)
+	}
+
+	for l := lstart; l <= lend; l++ {
+		printLine(l)
+
+		line := lines[l]
+
+		cstart := 0
+		if l == lstart {
+			cstart = s.Start.Column - 1
+		}
+
+		cend := len(line)
+		if l == lend {
+			cend = s.End.Column
+			if s.End.Column > s.Start.Column {
+				cend -= 1
+			}
+		}
+
+		fmt.Fprint(w, indent)
+		for c := 0; c < offset; c++ {
+			fmt.Fprint(w, " ")
+		}
+
+		for c := 0; c < len(line); c++ {
+			char := ' '
+			if c >= cstart && c < cend {
+				char = '^'
+			}
+
+			fmt.Fprint(w, string(char))
+		}
+
+		fmt.Fprintln(w)
+	}
+
+	for l := lend + 1; l < min(lend+context+1, len(lines)); l++ {
+		printLine(l)
+	}
+}
+
+var lineRE = regexp.MustCompile("\r?\n")
+
+func splitLines(data []byte) []string {
+	lines := lineRE.Split(string(data), -1)
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
 }
