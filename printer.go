@@ -48,6 +48,10 @@ func (p *printer) printElement(elt *Element) {
 	case *Entry:
 		p.printEntry(v)
 	}
+
+	if elt.FollowedByEmptyLine {
+		p.print("\n")
+	}
 }
 
 func (p *printer) printBlock(block *Block) {
@@ -62,6 +66,7 @@ func (p *printer) printBlock(block *Block) {
 	}
 	p.level--
 
+	p.printIndent()
 	p.print("}\n")
 }
 

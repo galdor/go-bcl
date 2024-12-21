@@ -115,7 +115,9 @@ func (p *parser) skipToken() *Token {
 	return token
 }
 
-func (p *parser) skipEOL() {
+func (p *parser) skipEOL() int {
+	var n int
+
 	for len(p.tokens) > 0 {
 		token := p.peekToken()
 		if token.Type != TokenTypeEOL {
@@ -123,7 +125,10 @@ func (p *parser) skipEOL() {
 		}
 
 		p.tokens = p.tokens[1:]
+		n++
 	}
+
+	return n
 }
 
 func (p *parser) parseElement() *Element {
@@ -149,10 +154,16 @@ func (p *parser) parseElement() *Element {
 			Elements: elts,
 		}
 
-		return &Element{
+		elt := Element{
 			Location: nameToken.Span.Union(lastToken.Span),
 			Content:  &block,
 		}
+
+		if p.skipEOL() > 1 {
+			elt.FollowedByEmptyLine = true
+		}
+
+		return &elt
 	}
 
 	values, lastToken := p.parseEntryValues()
@@ -165,10 +176,16 @@ func (p *parser) parseElement() *Element {
 		Values: values,
 	}
 
-	return &Element{
+	elt := Element{
 		Location: nameToken.Span.Union(lastToken.Span),
 		Content:  &entry,
 	}
+
+	if p.skipEOL() > 0 {
+		elt.FollowedByEmptyLine = true
+	}
+
+	return &elt
 }
 
 func (p *parser) parseBlockContent() ([]*Element, *Token) {

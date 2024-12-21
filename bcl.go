@@ -8,8 +8,9 @@ type Document struct {
 }
 
 type Element struct {
-	Location Span
-	Content  any // *Block or *Entry
+	Location            Span
+	Content             any // *Block or *Entry
+	FollowedByEmptyLine bool
 }
 
 type Block struct {
