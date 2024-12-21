@@ -56,7 +56,10 @@ func (p *parser) Parse() (doc *Document, err error) {
 	p.tokens = tokens
 
 	if len(tokens) > 0 {
+		// Errors signaled because a syntaxic element is truncated must point at
+		// something. We use a point just after the end of the last element.
 		p.endPoint = tokens[len(tokens)-1].Span.End
+		p.endPoint.Column++
 	}
 
 	p.doc = new(Document)

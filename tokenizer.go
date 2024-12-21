@@ -79,7 +79,7 @@ func (t *tokenizer) readToken() *Token {
 
 		if c == '\\' {
 			t.skip(1)
-			if t.skipEOL() {
+			if t.skipEOL() > 0 {
 				continue
 			}
 
@@ -90,11 +90,12 @@ func (t *tokenizer) readToken() *Token {
 		data := t.data
 		start := t.point
 
-		if t.skipEOL() {
+		if eolLen := t.skipEOL(); eolLen > 0 {
+			span := NewSpanAt(start, eolLen)
 			return &Token{
 				Type: TokenTypeEOL,
-				Span: Span{start, t.point},
-				Data: string(data[:t.point.Offset-start.Offset]),
+				Span: span,
+				Data: string(data[:span.Len()]),
 			}
 		}
 
@@ -104,7 +105,7 @@ func (t *tokenizer) readToken() *Token {
 
 			return &Token{
 				Type: TokenTypeOpeningBracket,
-				Span: Span{start, t.point},
+				Span: NewSpanAt(start, 1),
 				Data: "\n",
 			}
 
@@ -113,7 +114,7 @@ func (t *tokenizer) readToken() *Token {
 
 			return &Token{
 				Type: TokenTypeClosingBracket,
-				Span: Span{start, t.point},
+				Span: NewSpanAt(start, 1),
 				Data: "\n",
 			}
 
@@ -159,10 +160,12 @@ func (t *tokenizer) readSymbolToken() *Token {
 		t.skip(1)
 	}
 
+	span := NewSpanAt(start, len(symbol))
+
 	return &Token{
 		Type:  TokenTypeSymbol,
-		Span:  Span{start, t.point},
-		Data:  string(data[:t.point.Offset-start.Offset]),
+		Span:  span,
+		Data:  string(data[:span.Len()]),
 		Value: string(symbol),
 	}
 }
@@ -214,14 +217,14 @@ func (t *tokenizer) readNumberToken() *Token {
 			panic(t.syntaxErrorAtPoint(start, "invalid integer: %v", err))
 		}
 
-		token := Token{
+		span := NewSpanAt(start, len(s))
+
+		return &Token{
 			Type:  TokenTypeInteger,
-			Span:  Span{start, t.point},
-			Data:  string(data[:t.point.Offset-start.Offset]),
+			Span:  span,
+			Data:  string(data[:span.Len()]),
 			Value: i,
 		}
-
-		return &token
 	}
 
 	// Fractional part
@@ -287,10 +290,12 @@ func (t *tokenizer) readNumberToken() *Token {
 		panic(t.syntaxErrorAtPoint(start, "invalid float: %v", err))
 	}
 
+	span := NewSpanAt(start, len(s))
+
 	return &Token{
 		Type:  TokenTypeFloat,
-		Span:  Span{start, t.point},
-		Data:  string(data[:t.point.Offset-start.Offset]),
+		Span:  span,
+		Data:  string(data[:span.Len()]),
 		Value: f,
 	}
 }
@@ -302,6 +307,9 @@ func (t *tokenizer) readStringToken() *Token {
 	var s []rune
 
 	t.skip(1) // '"'
+
+	charLen := 1
+	byteLen := 1
 
 	for len(t.data) > 0 {
 		if len(t.data) == 0 {
@@ -316,11 +324,17 @@ func (t *tokenizer) readStringToken() *Token {
 		}
 
 		if c == '"' {
+			charLen++
+			byteLen++
+
 			t.skip(1)
 			break
 		}
 
 		if c == '\\' {
+			charLen++
+			byteLen++
+
 			t.skip(1)
 			if len(t.data) == 0 {
 				panic(t.syntaxErrorAtPoint(point, "truncated escape sequence"))
@@ -347,20 +361,26 @@ func (t *tokenizer) readStringToken() *Token {
 			case '\\':
 
 			default:
-				panic(t.syntaxErrorAtPoint(point,
+				span := NewSpanAt(point, 2)
+				panic(t.syntaxErrorAt(span,
 					"invalid escape sequence \"\\%c\"", c))
 			}
 		}
 
 		s = append(s, c)
 
+		charLen++
+		byteLen += utf8.RuneLen(c)
+
 		t.skip(1)
 	}
 
+	span := NewSpanAt(start, charLen)
+
 	return &Token{
 		Type:  TokenTypeString,
-		Span:  Span{start, t.point},
-		Data:  string(data[:t.point.Offset-start.Offset]),
+		Span:  span,
+		Data:  string(data[:byteLen]),
 		Value: string(s),
 	}
 }
@@ -444,13 +464,13 @@ func (t *tokenizer) startsWithEOL() int {
 	return 0
 }
 
-func (t *tokenizer) skipEOL() bool {
+func (t *tokenizer) skipEOL() int {
 	if eolLen := t.startsWithEOL(); eolLen > 0 {
 		t.skip(int64(eolLen))
-		return true
+		return eolLen
 	}
 
-	return false
+	return 0
 }
 
 func (t *tokenizer) skipComment() {
@@ -459,7 +479,7 @@ func (t *tokenizer) skipComment() {
 	for len(t.data) > 0 {
 		t.peekChar()
 
-		if t.skipEOL() {
+		if t.skipEOL() > 0 {
 			break
 		}
 

@@ -43,7 +43,7 @@ func (err *SyntaxError) Error() string {
 }
 
 type Point struct {
-	Offset int
+	Offset int // counted in characters (runes), not in bytes
 	Line   int
 	Column int
 }
@@ -59,6 +59,23 @@ func (p Point) Equal(p2 Point) bool {
 type Span struct {
 	Start Point
 	End   Point
+}
+
+func NewSpanAt(start Point, len int) Span {
+	end := Point{
+		Offset: start.Offset + len - 1,
+		Line:   start.Line,
+		Column: start.Column + len - 1,
+	}
+
+	return Span{
+		Start: start,
+		End:   end,
+	}
+}
+
+func (s Span) Len() int {
+	return s.End.Offset - s.Start.Offset + 1
 }
 
 func (s Span) String() string {
@@ -106,9 +123,6 @@ func (s Span) PrintSource(w io.Writer, lines []string, context int, indent strin
 		cend := len(line)
 		if l == lend {
 			cend = s.End.Column
-			if s.End.Column > s.Start.Column {
-				cend -= 1
-			}
 		}
 
 		fmt.Fprint(w, indent)
@@ -123,6 +137,11 @@ func (s Span) PrintSource(w io.Writer, lines []string, context int, indent strin
 			}
 
 			fmt.Fprint(w, string(char))
+		}
+
+		// The final point can appear just after the end of the line
+		if cend >= len(line) {
+			fmt.Fprint(w, string('^'))
 		}
 
 		fmt.Fprintln(w)
