@@ -48,6 +48,51 @@ type Point struct {
 	Column int
 }
 
+func (p Point) Cmp(p2 Point) int {
+	var ret int
+
+	switch {
+	case p.Offset < p2.Offset:
+		ret = -1
+	case p.Offset > p2.Offset:
+		ret = 1
+	case p.Offset == p2.Offset:
+		ret = 0
+	}
+
+	return ret
+}
+
+func MinPoint(p1, p2 Point) Point {
+	var p Point
+
+	switch p.Cmp(p2) {
+	case -1:
+		p = p1
+	case 0:
+		p = p1
+	case 1:
+		p = p2
+	}
+
+	return p
+}
+
+func MaxPoint(p1, p2 Point) Point {
+	var p Point
+
+	switch p.Cmp(p2) {
+	case -1:
+		p = p2
+	case 0:
+		p = p1
+	case 1:
+		p = p1
+	}
+
+	return p
+}
+
 func (p Point) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
@@ -59,6 +104,10 @@ func (p Point) Equal(p2 Point) bool {
 type Span struct {
 	Start Point
 	End   Point
+}
+
+func (s Span) Union(s2 Span) Span {
+	return Span{MinPoint(s.Start, s2.Start), MaxPoint(s.End, s2.End)}
 }
 
 func NewSpanAt(start Point, len int) Span {
@@ -96,7 +145,6 @@ func (s Span) Point() (Point, bool) {
 
 func (s Span) PrintSource(w io.Writer, lines []string, context int, indent string) {
 	nbLineDigits := int(math.Floor(math.Log10(float64(len(lines)))) + 1)
-	offset := nbLineDigits + 3
 
 	printLine := func(l int) {
 		fmt.Fprintf(w, "%s%*d │ ", indent, nbLineDigits, l+1)
@@ -125,10 +173,7 @@ func (s Span) PrintSource(w io.Writer, lines []string, context int, indent strin
 			cend = s.End.Column
 		}
 
-		fmt.Fprint(w, indent)
-		for c := 0; c < offset; c++ {
-			fmt.Fprint(w, " ")
-		}
+		fmt.Fprintf(w, "%s%*s │ ", indent, nbLineDigits, " ")
 
 		for c := 0; c < len(line); c++ {
 			char := ' '
@@ -139,8 +184,8 @@ func (s Span) PrintSource(w io.Writer, lines []string, context int, indent strin
 			fmt.Fprint(w, string(char))
 		}
 
-		// The final point can appear just after the end of the line
-		if cend >= len(line) {
+		// The final point can appear just after the end of the last line
+		if l == lend && cend > len(line) {
 			fmt.Fprint(w, string('^'))
 		}
 

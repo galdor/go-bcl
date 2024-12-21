@@ -20,7 +20,7 @@ func newParser(data []byte, source string) *parser {
 		data:   data,
 		lines:  splitLines(data),
 
-		doc: &Document{},
+		doc: &Document{Source: source},
 	}
 }
 
@@ -111,8 +111,10 @@ func (p *parser) readToken() *Token {
 	return token
 }
 
-func (p *parser) skipToken() {
+func (p *parser) skipToken() *Token {
+	token := p.tokens[0]
 	p.tokens = p.tokens[1:]
+	return token
 }
 
 func (p *parser) skipEOL() {
@@ -126,7 +128,7 @@ func (p *parser) skipEOL() {
 	}
 }
 
-func (p *parser) parseElement() Element {
+func (p *parser) parseElement() *Element {
 	p.skipEOL()
 	nameToken := p.readToken()
 	if nameToken == nil {
@@ -146,24 +148,38 @@ func (p *parser) parseElement() Element {
 	}
 
 	if token.Type == TokenTypeOpeningBracket {
-		elts := p.parseBlockContent()
+		elts, lastToken := p.parseBlockContent()
 
-		return &Block{
+		block := Block{
 			Name:     nameToken.Value.(string),
 			Elements: elts,
 		}
+
+		return &Element{
+			Location: nameToken.Span.Union(lastToken.Span),
+			Content:  &block,
+		}
 	}
 
-	values := p.parseEntryValues()
+	values, lastToken := p.parseEntryValues()
+	if lastToken == nil {
+		lastToken = nameToken
+	}
 
-	return &Entry{
+	entry := Entry{
 		Name:   nameToken.Value.(string),
 		Values: append([]Value{p.tokenValue(token)}, values...),
 	}
+
+	return &Element{
+		Location: nameToken.Span.Union(lastToken.Span),
+		Content:  &entry,
+	}
 }
 
-func (p *parser) parseBlockContent() []Element {
-	var elts []Element
+func (p *parser) parseBlockContent() ([]*Element, *Token) {
+	var elts []*Element
+	var lastToken *Token
 
 	for {
 		p.skipEOL()
@@ -173,7 +189,7 @@ func (p *parser) parseBlockContent() []Element {
 		}
 
 		if token.Type == TokenTypeClosingBracket {
-			p.skipToken()
+			lastToken = p.skipToken()
 			break
 		}
 
@@ -185,11 +201,12 @@ func (p *parser) parseBlockContent() []Element {
 		elts = append(elts, elt)
 	}
 
-	return elts
+	return elts, lastToken
 }
 
-func (p *parser) parseEntryValues() []Value {
+func (p *parser) parseEntryValues() ([]Value, *Token) {
 	var values []Value
+	var lastToken *Token
 
 	for {
 		token := p.readToken()
@@ -201,10 +218,11 @@ func (p *parser) parseEntryValues() []Value {
 			break
 		}
 
+		lastToken = token
 		values = append(values, p.tokenValue(token))
 	}
 
-	return values
+	return values, lastToken
 }
 
 func (p *parser) tokenValue(t *Token) Value {

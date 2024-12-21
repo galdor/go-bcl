@@ -1,16 +1,18 @@
 package bcl
 
 type Document struct {
-	Elements []Element
+	Source   string
+	Elements []*Element
 }
 
-// Either *Block or *Entry
-type Element interface {
+type Element struct {
+	Location Span
+	Content  any // *Block or *Entry
 }
 
 type Block struct {
 	Name     string
-	Elements []Element
+	Elements []*Element
 }
 
 type Entry struct {
@@ -18,6 +20,7 @@ type Entry struct {
 	Values []Value
 }
 
+// Either Symbol, bool, string, int64 or float64
 type Value interface {
 }
 
