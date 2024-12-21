@@ -32,7 +32,7 @@ func (p *parser) Parse() (doc *Document, err error) {
 
 				if errors.As(verr, &syntaxErr) {
 					syntaxErr.Lines = p.lines
-					err = ParseErrors{verr}
+					err = ParseError{verr}
 					return
 				}
 			}

@@ -10,21 +10,25 @@ import (
 	"strings"
 )
 
-type ParseErrors []error
+type ParseError struct {
+	Err error
+}
 
-func (errs ParseErrors) Error() string {
+func (err ParseError) Error() string {
 	var buf bytes.Buffer
 
-	for _, err := range errs {
-		fmt.Fprintln(&buf, err)
+	fmt.Fprintln(&buf, err.Err)
 
-		var syntaxErr *SyntaxError
-		if errors.As(err, &syntaxErr) {
-			syntaxErr.Location.PrintSource(&buf, syntaxErr.Lines, 2, "  ")
-		}
+	var syntaxErr *SyntaxError
+	if errors.As(err, &syntaxErr) {
+		syntaxErr.Location.PrintSource(&buf, syntaxErr.Lines, 2, "  ")
 	}
 
 	return strings.TrimRight(buf.String(), "\n")
+}
+
+func (err ParseError) Unwrap() error {
+	return err.Err
 }
 
 type SyntaxError struct {
