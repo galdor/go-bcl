@@ -102,13 +102,11 @@ func (p *parser) peekToken() *Token {
 }
 
 func (p *parser) readToken() *Token {
-	token := p.peekToken()
-	if token == nil {
+	if p.peekToken() == nil {
 		return nil
 	}
 
-	p.skipToken()
-	return token
+	return p.skipToken()
 }
 
 func (p *parser) skipToken() *Token {
@@ -136,18 +134,14 @@ func (p *parser) parseElement() *Element {
 	}
 
 	if nameToken.Type != TokenTypeSymbol {
-		panic(p.tokenSyntaxError(nameToken, "invalid token, expected block "+
-			"name or entry name"))
+		panic(p.tokenSyntaxError(nameToken, "invalid token %q, expected block "+
+			"name or entry name", nameToken.Type))
 	}
 
-	p.skipEOL()
-	token := p.readToken()
+	token := p.peekToken()
+	if token != nil && token.Type == TokenTypeOpeningBracket {
+		p.skipToken()
 
-	if token == nil {
-		panic(p.tokenSyntaxError(nameToken, "truncated element"))
-	}
-
-	if token.Type == TokenTypeOpeningBracket {
 		elts, lastToken := p.parseBlockContent()
 
 		block := Block{
@@ -168,7 +162,7 @@ func (p *parser) parseElement() *Element {
 
 	entry := Entry{
 		Name:   nameToken.Value.(string),
-		Values: append([]Value{p.tokenValue(token)}, values...),
+		Values: values,
 	}
 
 	return &Element{
@@ -250,7 +244,7 @@ func (p *parser) tokenValue(t *Token) Value {
 		return t.Value.(float64)
 
 	default:
-		panic(p.tokenSyntaxError(t, "invalid token, expected symbol, "+
-			"string, integer or float"))
+		panic(p.tokenSyntaxError(t, "invalid token %q, expected symbol, "+
+			"string, integer or float", t.Type))
 	}
 }
