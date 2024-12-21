@@ -1,8 +1,9 @@
 package main
 
 import (
+	"os"
+
 	"go.n16f.net/bcl"
-	"go.n16f.net/pp"
 	"go.n16f.net/program"
 )
 
@@ -14,6 +15,5 @@ func cmdFormat(p *program.Program) {
 		p.Fatal("cannot parse document:\n%v", err)
 	}
 
-	// TODO
-	pp.Print(doc, "document")
+	doc.Print(os.Stdout)
 }

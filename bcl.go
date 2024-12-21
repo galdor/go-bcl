@@ -1,5 +1,7 @@
 package bcl
 
+import "io"
+
 type Document struct {
 	Source   string
 	Elements []*Element
@@ -29,4 +31,9 @@ type Symbol string
 func Parse(data []byte, source string) (*Document, error) {
 	p := newParser(data, source)
 	return p.Parse()
+}
+
+func (doc *Document) Print(w io.Writer) error {
+	p := newPrinter(w, doc)
+	return p.Print()
 }
