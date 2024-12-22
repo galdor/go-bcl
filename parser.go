@@ -143,6 +143,15 @@ func (p *parser) parseElement() *Element {
 			"name or entry name", nameToken.Type))
 	}
 
+	valueToken := p.peekToken()
+	if valueToken != nil {
+		if valueToken.Type == TokenTypeString {
+			p.skipToken()
+		} else {
+			valueToken = nil
+		}
+	}
+
 	token := p.peekToken()
 	if token != nil && token.Type == TokenTypeOpeningBracket {
 		p.skipToken()
@@ -152,6 +161,10 @@ func (p *parser) parseElement() *Element {
 		block := Block{
 			Name:     nameToken.Value.(string),
 			Elements: elts,
+		}
+
+		if valueToken != nil {
+			block.Label = valueToken.Value.(string)
 		}
 
 		elt := Element{
@@ -169,6 +182,10 @@ func (p *parser) parseElement() *Element {
 	values, lastToken := p.parseEntryValues()
 	if lastToken == nil {
 		lastToken = nameToken
+	}
+
+	if valueToken != nil {
+		values = append([]Value{p.tokenValue(valueToken)}, values...)
 	}
 
 	entry := Entry{

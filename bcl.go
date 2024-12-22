@@ -15,6 +15,7 @@ type Element struct {
 
 type Block struct {
 	Name     string
+	Label    string
 	Elements []*Element
 }
 

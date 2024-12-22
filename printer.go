@@ -58,6 +58,12 @@ func (p *printer) printBlock(block *Block) {
 	p.printIndent()
 
 	p.print(block.Name)
+
+	if block.Label != "" {
+		p.print(" ")
+		p.printStringValue(block.Label)
+	}
+
 	p.print(" {\n")
 
 	p.level++
