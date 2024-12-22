@@ -59,15 +59,10 @@ func (p *parser) Parse() (doc *Document, err error) {
 		p.endPoint.Column++
 	}
 
-	var block Block
+	elts := p.parseBlockContent(true)
 
-	for {
-		elt := p.parseElement()
-		if elt == nil {
-			break
-		}
-
-		block.Elements = append(block.Elements, elt)
+	block := Block{
+		Elements: elts,
 	}
 
 	doc = &Document{
@@ -157,7 +152,7 @@ func (p *parser) parseElement() *Element {
 	if token != nil && token.Type == TokenTypeOpeningBracket {
 		p.skipToken()
 
-		elts, lastToken := p.parseBlockContent()
+		elts := p.parseBlockContent(false)
 
 		block := Block{
 			Type:     nameToken.Value.(string),
@@ -169,8 +164,12 @@ func (p *parser) parseElement() *Element {
 		}
 
 		elt := Element{
-			Location: nameToken.Span.Union(lastToken.Span),
+			Location: nameToken.Span,
 			Content:  &block,
+		}
+
+		if valueToken != nil {
+			elt.Location = nameToken.Span.Union(valueToken.Span)
 		}
 
 		if p.skipEOL() > 1 {
@@ -180,11 +179,7 @@ func (p *parser) parseElement() *Element {
 		return &elt
 	}
 
-	values, lastToken := p.parseEntryValues()
-	if lastToken == nil {
-		lastToken = nameToken
-	}
-
+	values := p.parseEntryValues()
 	if valueToken != nil {
 		values = append([]Value{p.tokenValue(valueToken)}, values...)
 	}
@@ -195,7 +190,7 @@ func (p *parser) parseElement() *Element {
 	}
 
 	elt := Element{
-		Location: nameToken.Span.Union(lastToken.Span),
+		Location: nameToken.Span,
 		Content:  &entry,
 	}
 
@@ -206,20 +201,28 @@ func (p *parser) parseElement() *Element {
 	return &elt
 }
 
-func (p *parser) parseBlockContent() ([]*Element, *Token) {
+func (p *parser) parseBlockContent(topLevel bool) []*Element {
 	var elts []*Element
-	var lastToken *Token
+
+	idTable := make(map[string]*Element)
 
 	for {
 		p.skipEOL()
 		token := p.peekToken()
-		if token == nil {
-			panic(p.syntaxErrorAtPoint(p.endPoint, "truncated block"))
-		}
 
-		if token.Type == TokenTypeClosingBracket {
-			lastToken = p.skipToken()
-			break
+		if topLevel {
+			if token == nil {
+				break
+			}
+		} else {
+			if token == nil {
+				panic(p.syntaxErrorAtPoint(p.endPoint, "truncated block"))
+			}
+
+			if token.Type == TokenTypeClosingBracket {
+				p.skipToken()
+				break
+			}
 		}
 
 		elt := p.parseElement()
@@ -227,31 +230,38 @@ func (p *parser) parseBlockContent() ([]*Element, *Token) {
 			panic(p.syntaxErrorAtPoint(p.endPoint, "truncated block"))
 		}
 
+		if id := elt.Id(); id != "" {
+			if prevElt := idTable[id]; prevElt != nil {
+				contentTypeName := elt.ContentTypeName()
+
+				panic(p.syntaxErrorAt(elt.Location,
+					"duplicate %s %q, previous %s found line %d",
+					contentTypeName, id, contentTypeName,
+					prevElt.Location.Start.Line))
+			}
+
+			idTable[id] = elt
+		}
+
 		elts = append(elts, elt)
 	}
 
-	return elts, lastToken
+	return elts
 }
 
-func (p *parser) parseEntryValues() ([]Value, *Token) {
+func (p *parser) parseEntryValues() []Value {
 	var values []Value
-	var lastToken *Token
 
 	for {
 		token := p.readToken()
-		if token == nil {
-			panic(p.syntaxErrorAtPoint(p.endPoint, "truncated entry"))
-		}
-
-		if token.Type == TokenTypeEOL {
+		if token == nil || token.Type == TokenTypeEOL {
 			break
 		}
 
-		lastToken = token
 		values = append(values, p.tokenValue(token))
 	}
 
-	return values, lastToken
+	return values
 }
 
 func (p *parser) tokenValue(t *Token) Value {

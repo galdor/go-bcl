@@ -1,6 +1,7 @@
 package bcl
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -40,6 +41,34 @@ func Parse(data []byte, source string) (*Document, error) {
 func (doc *Document) Print(w io.Writer) error {
 	p := newPrinter(w, doc)
 	return p.Print()
+}
+
+func (elt *Element) Id() (id string) {
+	switch content := elt.Content.(type) {
+	case *Block:
+		if content.Name != "" {
+			id = content.Type + "." + content.Name
+		}
+	case *Entry:
+		id = content.Name
+	default:
+		panic(fmt.Sprintf("unhandled element content %#v (%T)", elt, elt))
+	}
+
+	return
+}
+
+func (elt *Element) ContentTypeName() (name string) {
+	switch elt.Content.(type) {
+	case *Block:
+		name = "block"
+	case *Entry:
+		name = "entry"
+	default:
+		panic(fmt.Sprintf("unhandled element content %#v (%T)", elt, elt))
+	}
+
+	return
 }
 
 func (doc *Document) Blocks(btype string) []*Block {
