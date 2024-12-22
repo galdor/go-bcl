@@ -11,7 +11,6 @@ type parser struct {
 	lines    []string
 	tokens   []*Token
 	endPoint Point
-	doc      *Document
 }
 
 func newParser(data []byte, source string) *parser {
@@ -19,8 +18,6 @@ func newParser(data []byte, source string) *parser {
 		source: source,
 		data:   data,
 		lines:  splitLines(data),
-
-		doc: &Document{Source: source},
 	}
 }
 
@@ -62,7 +59,7 @@ func (p *parser) Parse() (doc *Document, err error) {
 		p.endPoint.Column++
 	}
 
-	p.doc = new(Document)
+	var block Block
 
 	for {
 		elt := p.parseElement()
@@ -70,10 +67,14 @@ func (p *parser) Parse() (doc *Document, err error) {
 			break
 		}
 
-		p.doc.Elements = append(p.doc.Elements, elt)
+		block.Elements = append(block.Elements, elt)
 	}
 
-	doc = p.doc
+	doc = &Document{
+		Source:   p.source,
+		TopLevel: &block,
+	}
+
 	return
 }
 

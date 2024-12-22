@@ -4,7 +4,7 @@ import "io"
 
 type Document struct {
 	Source   string
-	Elements []*Element
+	TopLevel *Block
 }
 
 type Element struct {
