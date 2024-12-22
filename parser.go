@@ -1,7 +1,6 @@
 package bcl
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -25,16 +24,13 @@ func (p *parser) Parse() (doc *Document, err error) {
 	defer func() {
 		if v := recover(); v != nil {
 			if verr, ok := v.(error); ok {
-				var syntaxErr *SyntaxError
-
-				if errors.As(verr, &syntaxErr) {
-					syntaxErr.Lines = p.lines
-					err = ParseError{verr}
-					return
+				err = ParseError{
+					Err:   verr,
+					Lines: p.lines,
 				}
+			} else {
+				panic(v)
 			}
-
-			panic(v)
 		}
 	}()
 
@@ -86,6 +82,14 @@ func (p *parser) syntaxErrorAt(span Span, format string, args ...any) error {
 		Source:      p.source,
 		Location:    span,
 		Description: fmt.Sprintf(format, args...),
+	}
+}
+
+func (p *parser) duplicateErrorAt(elt, prevElt *Element) error {
+	return &DuplicateError{
+		Source:          p.source,
+		Element:         elt,
+		PreviousElement: prevElt,
 	}
 }
 
@@ -232,12 +236,7 @@ func (p *parser) parseBlockContent(topLevel bool) []*Element {
 
 		if id := elt.Id(); id != "" {
 			if prevElt := idTable[id]; prevElt != nil {
-				contentTypeName := elt.ContentTypeName()
-
-				panic(p.syntaxErrorAt(elt.Location,
-					"duplicate %s %q, previous %s found line %d",
-					contentTypeName, id, contentTypeName,
-					prevElt.Location.Start.Line))
+				panic(p.duplicateErrorAt(elt, prevElt))
 			}
 
 			idTable[id] = elt

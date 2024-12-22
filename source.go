@@ -11,7 +11,8 @@ import (
 )
 
 type ParseError struct {
-	Err error
+	Err   error
+	Lines []string
 }
 
 func (err ParseError) Error() string {
@@ -20,8 +21,12 @@ func (err ParseError) Error() string {
 	fmt.Fprintln(&buf, err.Err)
 
 	var syntaxErr *SyntaxError
+	var duplicateErr *DuplicateError
+
 	if errors.As(err, &syntaxErr) {
-		syntaxErr.Location.PrintSource(&buf, syntaxErr.Lines, 2, "  ")
+		syntaxErr.Location.PrintSource(&buf, err.Lines)
+	} else if errors.As(err, &duplicateErr) {
+		duplicateErr.Element.Location.PrintSource(&buf, err.Lines)
 	}
 
 	return strings.TrimRight(buf.String(), "\n")
@@ -33,7 +38,6 @@ func (err ParseError) Unwrap() error {
 
 type SyntaxError struct {
 	Source      string
-	Lines       []string
 	Location    Span
 	Description string
 }
@@ -43,6 +47,27 @@ func (err *SyntaxError) Error() string {
 	if err.Source != "" {
 		msg = err.Source + ":" + msg
 	}
+	return msg
+}
+
+type DuplicateError struct {
+	Source string
+
+	Element         *Element
+	PreviousElement *Element
+}
+
+func (err *DuplicateError) Error() string {
+	contentTypeName := err.Element.ContentTypeName()
+	description := fmt.Sprintf("duplicate %s %q, previous %s found line %d",
+		contentTypeName, err.Element.Id(), contentTypeName,
+		err.Element.Location.Start.Line)
+
+	msg := err.Element.Location.String() + ": " + description
+	if err.Source != "" {
+		msg = err.Source + ":" + msg
+	}
+
 	return msg
 }
 
@@ -147,7 +172,10 @@ func (s Span) Point() (Point, bool) {
 	return Point{}, false
 }
 
-func (s Span) PrintSource(w io.Writer, lines []string, context int, indent string) {
+func (s Span) PrintSource(w io.Writer, lines []string) {
+	const context = 2
+	const indent = "  "
+
 	nbLineDigits := int(math.Floor(math.Log10(float64(len(lines)))) + 1)
 
 	printLine := func(l int) {
