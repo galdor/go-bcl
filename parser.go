@@ -160,12 +160,12 @@ func (p *parser) parseElement() *Element {
 		elts, lastToken := p.parseBlockContent()
 
 		block := Block{
-			Name:     nameToken.Value.(string),
+			Type:     nameToken.Value.(string),
 			Elements: elts,
 		}
 
 		if valueToken != nil {
-			block.Label = valueToken.Value.(string)
+			block.Name = valueToken.Value.(string)
 		}
 
 		elt := Element{

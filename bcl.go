@@ -16,8 +16,8 @@ type Element struct {
 }
 
 type Block struct {
+	Type     string
 	Name     string
-	Label    string
 	Elements []*Element
 }
 
@@ -42,20 +42,20 @@ func (doc *Document) Print(w io.Writer) error {
 	return p.Print()
 }
 
-func (doc *Document) Blocks(name string) []*Block {
-	return doc.TopLevel.Blocks(name)
+func (doc *Document) Blocks(btype string) []*Block {
+	return doc.TopLevel.Blocks(btype)
 }
 
-func (doc *Document) Block(name, label string) *Block {
-	return doc.TopLevel.Block(name, label)
+func (doc *Document) Block(btype, name string) *Block {
+	return doc.TopLevel.Block(btype, name)
 }
 
-func (b *Block) Blocks(name string) []*Block {
+func (b *Block) Blocks(btype string) []*Block {
 	var blocks []*Block
 
 	for _, elt := range b.Elements {
 		if block, ok := elt.Content.(*Block); ok {
-			if block.Name == name {
+			if block.Type == btype {
 				blocks = append(blocks, block)
 			}
 		}
@@ -64,10 +64,10 @@ func (b *Block) Blocks(name string) []*Block {
 	return blocks
 }
 
-func (b *Block) Block(name, label string) *Block {
+func (b *Block) Block(btype, name string) *Block {
 	for _, elt := range b.Elements {
 		if block, ok := elt.Content.(*Block); ok {
-			if block.Name == name && block.Label == label {
+			if block.Type == btype && block.Name == name {
 				return block
 			}
 		}

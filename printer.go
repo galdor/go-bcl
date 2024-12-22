@@ -57,11 +57,11 @@ func (p *printer) printElement(elt *Element) {
 func (p *printer) printBlock(block *Block) {
 	p.printIndent()
 
-	p.print(block.Name)
+	p.print(block.Type)
 
-	if block.Label != "" {
+	if block.Name != "" {
 		p.print(" ")
-		p.printStringValue(block.Label)
+		p.printStringValue(block.Name)
 	}
 
 	p.print(" {\n")
