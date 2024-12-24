@@ -24,11 +24,12 @@ type Block struct {
 
 type Entry struct {
 	Name   string
-	Values []Value
+	Values []*Value
 }
 
-// Either Symbol, bool, string, int64 or float64
-type Value interface {
+type Value struct {
+	Location Span
+	Content  any // either Symbol, bool, string, int64 or float64
 }
 
 type Symbol string

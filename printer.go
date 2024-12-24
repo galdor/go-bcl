@@ -89,8 +89,8 @@ func (p *printer) printEntry(entry *Entry) {
 	p.print("\n")
 }
 
-func (p *printer) printValue(value Value) {
-	switch v := value.(type) {
+func (p *printer) printValue(value *Value) {
+	switch v := value.Content.(type) {
 	case Symbol:
 		p.print(string(v))
 

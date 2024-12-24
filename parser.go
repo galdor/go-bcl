@@ -185,7 +185,7 @@ func (p *parser) parseElement() *Element {
 
 	values := p.parseEntryValues()
 	if valueToken != nil {
-		values = append([]Value{p.tokenValue(valueToken)}, values...)
+		values = append([]*Value{p.tokenValue(valueToken)}, values...)
 	}
 
 	entry := Entry{
@@ -248,8 +248,8 @@ func (p *parser) parseBlockContent(topLevel bool) []*Element {
 	return elts
 }
 
-func (p *parser) parseEntryValues() []Value {
-	var values []Value
+func (p *parser) parseEntryValues() []*Value {
+	var values []*Value
 
 	for {
 		token := p.readToken()
@@ -263,32 +263,39 @@ func (p *parser) parseEntryValues() []Value {
 	return values
 }
 
-func (p *parser) tokenValue(t *Token) Value {
+func (p *parser) tokenValue(t *Token) *Value {
+	var v any
+
 	switch t.Type {
 	case TokenTypeSymbol:
 		s := t.Value.(string)
 		switch s {
 		case "true":
-			return true
+			v = true
 		case "false":
-			return false
+			v = false
 		case "null":
-			return nil
+			v = nil
 		default:
-			return Symbol(t.Value.(string))
+			v = Symbol(t.Value.(string))
 		}
 
 	case TokenTypeString:
-		return t.Value.(string)
+		v = t.Value.(string)
 
 	case TokenTypeInteger:
-		return t.Value.(int64)
+		v = t.Value.(int64)
 
 	case TokenTypeFloat:
-		return t.Value.(float64)
+		v = t.Value.(float64)
 
 	default:
 		panic(p.tokenSyntaxError(t, "invalid token %q, expected symbol, "+
 			"string, integer or float", t.Type))
+	}
+
+	return &Value{
+		Location: t.Span,
+		Content:  v,
 	}
 }
