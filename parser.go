@@ -208,7 +208,7 @@ func (p *parser) parseElement() *Element {
 func (p *parser) parseBlockContent(topLevel bool) []*Element {
 	var elts []*Element
 
-	idTable := make(map[string]*Element)
+	blockTable := make(map[string]*Element)
 
 	for {
 		p.skipEOL()
@@ -234,12 +234,14 @@ func (p *parser) parseBlockContent(topLevel bool) []*Element {
 			panic(p.syntaxErrorAtPoint(p.endPoint, "truncated block"))
 		}
 
-		if id := elt.Id(); id != "" {
-			if prevElt := idTable[id]; prevElt != nil {
-				panic(p.duplicateErrorAt(elt, prevElt))
-			}
+		if _, ok := elt.Content.(*Block); ok {
+			if id := elt.Id(); id != "" {
+				if prevElt := blockTable[id]; prevElt != nil {
+					panic(p.duplicateErrorAt(elt, prevElt))
+				}
 
-			idTable[id] = elt
+				blockTable[id] = elt
+			}
 		}
 
 		elts = append(elts, elt)
