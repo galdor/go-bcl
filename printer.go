@@ -36,8 +36,10 @@ func (p *printer) Print() (err error) {
 }
 
 func (p *printer) printDocument() {
-	for _, elt := range p.doc.TopLevel.Elements {
-		p.printElement(elt)
+	block := p.doc.TopLevel.Content.(*Block)
+
+	for _, child := range block.Elements {
+		p.printElement(child)
 	}
 }
 

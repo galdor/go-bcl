@@ -61,9 +61,14 @@ func (p *parser) Parse() (doc *Document, err error) {
 		Elements: elts,
 	}
 
+	topLevel := Element{
+		Location: NewSpanAt(Point{0, 1, 1}, 0),
+		Content:  &block,
+	}
+
 	doc = &Document{
 		Source:   p.source,
-		TopLevel: &block,
+		TopLevel: &topLevel,
 	}
 
 	return

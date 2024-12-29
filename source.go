@@ -58,10 +58,9 @@ type DuplicateError struct {
 }
 
 func (err *DuplicateError) Error() string {
-	contentTypeName := err.Element.ContentTypeName()
+	eltType := err.Element.Type()
 	description := fmt.Sprintf("duplicate %s %q, previous %s found line %d",
-		contentTypeName, err.Element.Id(), contentTypeName,
-		err.Element.Location.Start.Line)
+		eltType, err.Element.Id(), eltType, err.Element.Location.Start.Line)
 
 	msg := err.Element.Location.String() + ": " + description
 	if err.Source != "" {
