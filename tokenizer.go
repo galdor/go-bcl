@@ -479,7 +479,7 @@ func (t *tokenizer) skipComment() {
 	for len(t.data) > 0 {
 		t.peekChar()
 
-		if t.skipEOL() > 0 {
+		if t.startsWithEOL() > 0 {
 			break
 		}
 
