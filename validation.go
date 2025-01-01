@@ -10,7 +10,7 @@ import (
 
 type ValidationError struct {
 	Err      error
-	Location Span
+	Location *Span
 }
 
 type ValidationErrors struct {
@@ -29,7 +29,9 @@ func (errs *ValidationErrors) Error() string {
 		buf.WriteString(err.Err.Error())
 		buf.WriteByte('\n')
 
-		err.Location.PrintSource(&buf, errs.Lines)
+		if err.Location != nil {
+			err.Location.PrintSource(&buf, errs.Lines)
+		}
 	}
 
 	return strings.TrimRight(buf.String(), "\n")
@@ -41,16 +43,24 @@ func (doc *Document) ValidationErrors() *ValidationErrors {
 	var walk func(*Element)
 	walk = func(elt *Element) {
 		for _, eltErr := range elt.validationErrors {
-			eltErr2 := fmt.Errorf("invalid %s: %w", elt.Type(), eltErr)
+			var eltErr2 error
+			if elt == doc.TopLevel {
+				eltErr2 = eltErr
+			} else {
+				eltErr2 = fmt.Errorf("invalid %s: %w", elt.Type(), eltErr)
+			}
 
 			verr := ValidationError{
-				Err:      eltErr2,
-				Location: elt.Location,
+				Err: eltErr2,
+			}
+
+			if elt != doc.TopLevel {
+				verr.Location = &elt.Location
 			}
 
 			var invalidValueErr *InvalidValueError
 			if errors.As(eltErr, &invalidValueErr) {
-				verr.Location = invalidValueErr.Value.Location
+				verr.Location = &invalidValueErr.Value.Location
 			}
 
 			errs = append(errs, verr)
@@ -125,12 +135,12 @@ func (elt *Element) AddInvalidElementTypeError(expectedType ElementType) error {
 	})
 }
 
-type InvalidEntryValueCountError struct {
+type InvalidEntryNbValuesError struct {
 	NbValues         int
 	ExpectedNbValues []int
 }
 
-func (err *InvalidEntryValueCountError) Error() string {
+func (err *InvalidEntryNbValuesError) Error() string {
 	ns := make([]string, len(err.ExpectedNbValues))
 	for i, n := range err.ExpectedNbValues {
 		ns[i] = strconv.Itoa(n)
@@ -141,10 +151,28 @@ func (err *InvalidEntryValueCountError) Error() string {
 		WordsEnumerationOr(ns), PluralizeWord("value", len(ns)))
 }
 
-func (elt *Element) AddInvalidEntryValueCountError(expectedNbValues ...int) error {
-	return elt.AddValidationError(&InvalidEntryValueCountError{
+func (elt *Element) AddInvalidEntryNbValuesError(expectedNbValues ...int) error {
+	return elt.AddValidationError(&InvalidEntryNbValuesError{
 		NbValues:         len(elt.Content.(*Entry).Values),
 		ExpectedNbValues: expectedNbValues,
+	})
+}
+
+type InvalidEntryMinNbValuesError struct {
+	NbValues int
+	Min      int
+}
+
+func (err *InvalidEntryMinNbValuesError) Error() string {
+	return fmt.Sprintf("entry has %d %s but should have at least %d %s",
+		err.NbValues, PluralizeWord("value", err.NbValues),
+		err.Min, PluralizeWord("value", err.Min))
+}
+
+func (elt *Element) AddInvalidEntryMinNbValuesError(min int) error {
+	return elt.AddValidationError(&InvalidEntryMinNbValuesError{
+		NbValues: len(elt.Content.(*Entry).Values),
+		Min:      min,
 	})
 }
 
