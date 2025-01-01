@@ -16,6 +16,8 @@ type ParseError struct {
 }
 
 func (err ParseError) Error() string {
+	const indent = "  "
+
 	var buf bytes.Buffer
 
 	fmt.Fprintln(&buf, err.Err)
@@ -24,9 +26,9 @@ func (err ParseError) Error() string {
 	var duplicateErr *DuplicateError
 
 	if errors.As(err, &syntaxErr) {
-		syntaxErr.Location.PrintSource(&buf, err.Lines)
+		syntaxErr.Location.PrintSource(&buf, err.Lines, indent)
 	} else if errors.As(err, &duplicateErr) {
-		duplicateErr.Element.Location.PrintSource(&buf, err.Lines)
+		duplicateErr.Element.Location.PrintSource(&buf, err.Lines, indent)
 	}
 
 	return strings.TrimRight(buf.String(), "\n")
@@ -171,9 +173,8 @@ func (s Span) Point() (Point, bool) {
 	return Point{}, false
 }
 
-func (s Span) PrintSource(w io.Writer, lines []string) {
+func (s Span) PrintSource(w io.Writer, lines []string, indent string) {
 	const context = 2
-	const indent = "  "
 
 	nbLineDigits := int(math.Floor(math.Log10(float64(len(lines)))) + 1)
 

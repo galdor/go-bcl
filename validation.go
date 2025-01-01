@@ -21,16 +21,13 @@ type ValidationErrors struct {
 func (errs *ValidationErrors) Error() string {
 	var buf bytes.Buffer
 
-	for i, err := range errs.Errs {
-		if i > 0 {
-			buf.WriteByte('\n')
-		}
-
+	for _, err := range errs.Errs {
+		buf.WriteString("  - ")
 		buf.WriteString(err.Err.Error())
 		buf.WriteByte('\n')
 
 		if err.Location != nil {
-			err.Location.PrintSource(&buf, errs.Lines)
+			err.Location.PrintSource(&buf, errs.Lines, "      ")
 		}
 	}
 
