@@ -3,6 +3,7 @@ package bcl
 import (
 	"fmt"
 	"math"
+	"reflect"
 )
 
 type ValueType string
@@ -14,6 +15,10 @@ const (
 	ValueTypeInteger ValueType = "integer"
 	ValueTypeFloat   ValueType = "float"
 )
+
+type ValueReader interface {
+	ReadBCLValue(*Value) error
+}
 
 type Value struct {
 	Location Span
@@ -44,6 +49,10 @@ func (v *Value) Type() (t ValueType) {
 
 func (v *Value) Extract(dest any) error {
 	vt := v.Type()
+
+	if vr, ok := dest.(ValueReader); ok {
+		return vr.ReadBCLValue(v)
+	}
 
 	switch ptr := dest.(type) {
 	case *bool:
@@ -103,6 +112,34 @@ func (v *Value) Extract(dest any) error {
 		}
 
 	default:
+		// Given a type T, there are two possible destination values:
+		//
+		// 1. A value of type *T if the caller wants to extract the BCL value to
+		// a stack-allocated value.
+		//
+		// 2. A value of type **T if the caller wants to extract the BCL value to
+		// a heap-allocated value (or in most cases because the value is
+		// optional, hence the pointer type).
+		//
+		// 1 was handled at the beginning of the fonction (ReadBCLValue will
+		// always have a pointer receiver).
+		//
+		// 2 is handled here.
+
+		dv := reflect.ValueOf(dest)
+		if dv.Kind() == reflect.Pointer && dv.Elem().Kind() == reflect.Pointer {
+			dest2 := reflect.New(dv.Elem().Type().Elem())
+
+			if vr, ok := dest2.Interface().(ValueReader); ok {
+				if err := vr.ReadBCLValue(v); err != nil {
+					return err
+				}
+
+				dv.Elem().Set(dest2)
+				return nil
+			}
+		}
+
 		panic(fmt.Sprintf("unhandled value destination of type %T", dest))
 	}
 
