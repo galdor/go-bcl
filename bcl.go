@@ -213,25 +213,43 @@ func (elt *Element) CheckMinValues(min int) bool {
 	return true
 }
 
-func (elt *Element) EntryValues(name string, dests ...any) bool {
+func (elt *Element) Values(name string, dests ...any) bool {
 	entry := elt.Entry(name)
 	if entry == nil {
 		return false
 	}
 
-	return entry.Values(dests...)
+	return entry.ExtractValues(dests...)
 }
 
-func (elt *Element) MaybeEntryValues(name string, dests ...any) bool {
+func (elt *Element) Value(name string, dest any) bool {
+	entry := elt.Entry(name)
+	if entry == nil {
+		return false
+	}
+
+	return entry.ExtractValues(dest)
+}
+
+func (elt *Element) MaybeValues(name string, dests ...any) bool {
 	entry := elt.MaybeEntry(name)
 	if entry == nil {
 		return true
 	}
 
-	return entry.Values(dests...)
+	return entry.ExtractValues(dests...)
 }
 
-func (elt *Element) Values(dests ...any) bool {
+func (elt *Element) MaybeValue(name string, dest any) bool {
+	entry := elt.MaybeEntry(name)
+	if entry == nil {
+		return true
+	}
+
+	return entry.ExtractValues(dest)
+}
+
+func (elt *Element) ExtractValues(dests ...any) bool {
 	entry := elt.CheckTypeEntry()
 	if entry == nil {
 		return false
