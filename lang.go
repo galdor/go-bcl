@@ -21,13 +21,21 @@ func WordWithArticle(s string) string {
 	return article + " " + s
 }
 
-func WordsEnumerationOr(ss []string) (se string) {
+func WordsEnumerationAnd(ss []string) string {
+	return wordsEnumeration(ss, " and ")
+}
+
+func WordsEnumerationOr(ss []string) string {
+	return wordsEnumeration(ss, " or ")
+}
+
+func wordsEnumeration(ss []string, lastSeparator string) (se string) {
 	switch len(ss) {
 	case 1:
 		se = ss[0]
 
 	case 2:
-		se = ss[0] + " or " + ss[1]
+		se = ss[0] + lastSeparator + ss[1]
 
 	default:
 		var buf bytes.Buffer
@@ -40,7 +48,7 @@ func WordsEnumerationOr(ss []string) (se string) {
 			buf.WriteString(ss[i])
 		}
 
-		buf.WriteString(" or ")
+		buf.WriteString(lastSeparator)
 		buf.WriteString(ss[len(ss)-1])
 
 		se = buf.String()

@@ -40,15 +40,8 @@ func (doc *Document) ValidationErrors() *ValidationErrors {
 	var walk func(*Element)
 	walk = func(elt *Element) {
 		for _, eltErr := range elt.validationErrors {
-			var eltErr2 error
-			if elt == doc.TopLevel {
-				eltErr2 = eltErr
-			} else {
-				eltErr2 = fmt.Errorf("invalid %s: %w", elt.Type(), eltErr)
-			}
-
 			verr := ValidationError{
-				Err: eltErr2,
+				Err: eltErr,
 			}
 
 			if elt != doc.TopLevel {
@@ -102,18 +95,29 @@ func (elt *Element) AddSimpleValidationError(format string, args ...any) error {
 }
 
 type MissingElementError struct {
-	Name         string
-	ExpectedType ElementType
+	ElementType ElementType
+	Names       []string
 }
 
 func (err *MissingElementError) Error() string {
-	return fmt.Sprintf("missing child %s %q", err.ExpectedType, err.Name)
+	names := make([]string, len(err.Names))
+	for i, name := range err.Names {
+		names[i] = fmt.Sprintf("%q", name)
+	}
+
+	if err.ElementType == ElementTypeBlock {
+		return fmt.Sprintf("block must contain a block of type %s",
+			WordsEnumerationOr(names))
+	} else {
+		return fmt.Sprintf("block must contain %s named %s",
+			WordWithArticle(string(err.ElementType)), WordsEnumerationOr(names))
+	}
 }
 
-func (elt *Element) AddMissingElementError(name string, expectedType ElementType) error {
+func (elt *Element) AddMissingElementError(eltType ElementType, names []string) error {
 	return elt.AddValidationError(&MissingElementError{
-		Name:         name,
-		ExpectedType: expectedType,
+		ElementType: eltType,
+		Names:       names,
 	})
 }
 
@@ -129,6 +133,42 @@ func (err *InvalidElementTypeError) Error() string {
 func (elt *Element) AddInvalidElementTypeError(expectedType ElementType) error {
 	return elt.AddValidationError(&InvalidElementTypeError{
 		ExpectedType: expectedType,
+	})
+}
+
+type ElementConflictError struct {
+	ElementType  ElementType
+	ElementNames []string
+	Names        []string
+}
+
+func (err *ElementConflictError) Error() string {
+	eltNames := make([]string, len(err.ElementNames))
+	for i, name := range err.ElementNames {
+		eltNames[i] = fmt.Sprintf("%q", name)
+	}
+
+	names := make([]string, len(err.Names))
+	for i, name := range err.Names {
+		names[i] = fmt.Sprintf("%q", name)
+	}
+
+	if err.ElementType == ElementTypeBlock {
+		return fmt.Sprintf("block contains blocks of type %s but must only "+
+			"contain one block of type %s",
+			WordsEnumerationAnd(eltNames), WordsEnumerationOr(names))
+	} else {
+		return fmt.Sprintf("block contains entries named %s but must only "+
+			"contain one entry named %s",
+			WordsEnumerationAnd(eltNames), WordsEnumerationOr(names))
+	}
+}
+
+func (elt *Element) AddElementConflictError(eltType ElementType, eltNames, names []string) error {
+	return elt.AddValidationError(&ElementConflictError{
+		ElementType:  eltType,
+		ElementNames: eltNames,
+		Names:        names,
 	})
 }
 

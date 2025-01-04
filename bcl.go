@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 )
 
 type ElementType string
@@ -125,6 +126,57 @@ func (elt *Element) CheckTypeEntry() *Entry {
 	return entry
 }
 
+func (elt *Element) CheckBlocksOneOf(btypes ...string) bool {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return false
+	}
+
+	var foundBlockTypes []string
+
+	for _, child := range block.Elements {
+		if block, ok := child.Content.(*Block); ok {
+			if slices.Contains(btypes, block.Type) {
+				foundBlockTypes = append(foundBlockTypes, block.Type)
+			}
+		}
+	}
+
+	if len(foundBlockTypes) == 0 {
+		elt.AddMissingElementError(ElementTypeBlock, btypes)
+		return false
+	} else if len(foundBlockTypes) > 1 {
+		elt.AddElementConflictError(ElementTypeBlock, foundBlockTypes, btypes)
+		return false
+	}
+
+	return true
+}
+
+func (elt *Element) CheckBlocksMaybeOneOf(btypes ...string) bool {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return false
+	}
+
+	var foundBlockTypes []string
+
+	for _, child := range block.Elements {
+		if block, ok := child.Content.(*Block); ok {
+			if slices.Contains(btypes, block.Type) {
+				foundBlockTypes = append(foundBlockTypes, block.Type)
+			}
+		}
+	}
+
+	if len(foundBlockTypes) > 1 {
+		elt.AddElementConflictError(ElementTypeBlock, foundBlockTypes, btypes)
+		return false
+	}
+
+	return true
+}
+
 func (elt *Element) Blocks(btype string) []*Element {
 	block := elt.CheckTypeBlock()
 	if block == nil {
@@ -151,7 +203,7 @@ func (elt *Element) Block(btype string) *Element {
 func (elt *Element) NamedBlock(btype, name string) *Element {
 	block := elt.MaybeNamedBlock(btype, name)
 	if block == nil {
-		elt.AddMissingElementError(btype, ElementTypeBlock)
+		elt.AddMissingElementError(ElementTypeBlock, []string{btype})
 		return nil
 	}
 
@@ -182,7 +234,7 @@ func (elt *Element) MaybeNamedBlock(btype, name string) *Element {
 func (elt *Element) Entry(name string) *Element {
 	entry := elt.MaybeEntry(name)
 	if entry == nil {
-		elt.AddMissingElementError(name, ElementTypeEntry)
+		elt.AddMissingElementError(ElementTypeEntry, []string{name})
 		return nil
 	}
 
