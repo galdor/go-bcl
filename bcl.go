@@ -89,12 +89,20 @@ func (doc *Document) Blocks(btype string) []*Element {
 	return doc.TopLevel.Blocks(btype)
 }
 
-func (doc *Document) Block(btype, name string) *Element {
-	return doc.TopLevel.Block(btype, name)
+func (doc *Document) Block(btype string) *Element {
+	return doc.TopLevel.Block(btype)
 }
 
-func (doc *Document) MaybeBlock(btype, name string) *Element {
-	return doc.TopLevel.MaybeBlock(btype, name)
+func (doc *Document) NamedBlock(btype, name string) *Element {
+	return doc.TopLevel.NamedBlock(btype, name)
+}
+
+func (doc *Document) MaybeBlock(btype string) *Element {
+	return doc.TopLevel.MaybeBlock(btype)
+}
+
+func (doc *Document) MaybeNamedBlock(btype, name string) *Element {
+	return doc.TopLevel.MaybeNamedBlock(btype, name)
 }
 
 func (elt *Element) CheckTypeBlock() *Block {
@@ -136,8 +144,12 @@ func (elt *Element) Blocks(btype string) []*Element {
 	return blocks
 }
 
-func (elt *Element) Block(btype, name string) *Element {
-	block := elt.MaybeBlock(btype, name)
+func (elt *Element) Block(btype string) *Element {
+	return elt.NamedBlock(btype, "")
+}
+
+func (elt *Element) NamedBlock(btype, name string) *Element {
+	block := elt.MaybeNamedBlock(btype, name)
 	if block == nil {
 		elt.AddMissingElementError(btype, ElementTypeBlock)
 		return nil
@@ -146,7 +158,11 @@ func (elt *Element) Block(btype, name string) *Element {
 	return block
 }
 
-func (elt *Element) MaybeBlock(btype, name string) *Element {
+func (elt *Element) MaybeBlock(btype string) *Element {
+	return elt.MaybeNamedBlock(btype, "")
+}
+
+func (elt *Element) MaybeNamedBlock(btype, name string) *Element {
 	block := elt.CheckTypeBlock()
 	if block == nil {
 		return nil
