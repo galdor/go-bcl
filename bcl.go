@@ -93,6 +93,10 @@ func (doc *Document) Block(btype, name string) *Element {
 	return doc.TopLevel.Block(btype, name)
 }
 
+func (doc *Document) MaybeBlock(btype, name string) *Element {
+	return doc.TopLevel.MaybeBlock(btype, name)
+}
+
 func (elt *Element) CheckTypeBlock() *Block {
 	block, ok := elt.Content.(*Block)
 	if !ok {
