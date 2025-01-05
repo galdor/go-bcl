@@ -136,6 +136,17 @@ func (elt *Element) AddInvalidElementTypeError(expectedType ElementType) error {
 	})
 }
 
+type MissingBlockNameError struct {
+}
+
+func (err *MissingBlockNameError) Error() string {
+	return "missing or empty block name"
+}
+
+func (elt *Element) AddMissingBlockNameError() error {
+	return elt.AddValidationError(&MissingBlockNameError{})
+}
+
 type ElementConflictError struct {
 	ElementType  ElementType
 	ElementNames []string

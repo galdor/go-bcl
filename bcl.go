@@ -231,6 +231,19 @@ func (elt *Element) MaybeNamedBlock(btype, name string) *Element {
 	return nil
 }
 
+func (elt *Element) BlockName() string {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return ""
+	}
+
+	if block.Name == "" {
+		elt.AddMissingBlockNameError()
+	}
+
+	return block.Name
+}
+
 func (elt *Element) Entry(name string) *Element {
 	entry := elt.MaybeEntry(name)
 	if entry == nil {
