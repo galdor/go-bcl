@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"regexp"
 )
 
 type ValueType string
@@ -111,6 +112,18 @@ func (v *Value) Extract(dest any) error {
 			return v.ValueTypeError(ValueTypeFloat, ValueTypeInteger)
 		}
 
+	case **regexp.Regexp:
+		switch vt {
+		case ValueTypeString:
+			re, err := regexp.Compile(v.Content.(string))
+			if err != nil {
+				return v.ValueError("invalid regexp: %w", err)
+			}
+			*ptr = re
+		default:
+			return v.ValueTypeError(ValueTypeString)
+		}
+
 	default:
 		// Given a type T, there are two possible destination values:
 		//
@@ -144,6 +157,10 @@ func (v *Value) Extract(dest any) error {
 	}
 
 	return nil
+}
+
+func (v *Value) ValueError(format string, args ...any) *InvalidValueError {
+	return &InvalidValueError{Err: fmt.Errorf(format, args...)}
 }
 
 func (v *Value) ValueTypeError(expectedTypes ...ValueType) *InvalidValueTypeError {
