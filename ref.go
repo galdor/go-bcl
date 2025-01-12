@@ -1,5 +1,5 @@
 package bcl
 
-func Ref[T any](v T) *T {
+func ref[T any](v T) *T {
 	return &v
 }

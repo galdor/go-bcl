@@ -138,15 +138,19 @@ func (elt *Element) CheckTypeEntry() *Entry {
 	return entry
 }
 
-func (elt *Element) CheckElementsOneOf(names ...string) bool {
+func (elt *Element) uniqueElementNames(eltType *ElementType, names []string) ([]string, bool) {
 	block := elt.CheckTypeBlock()
 	if block == nil {
-		return false
+		return nil, false
 	}
 
 	foundNames := make(map[string]struct{})
 
 	for _, child := range block.Elements {
+		if eltType != nil && *eltType != child.Type() {
+			continue
+		}
+
 		switch content := child.Content.(type) {
 		case *Block:
 			if slices.Contains(names, content.Type) {
@@ -159,12 +163,20 @@ func (elt *Element) CheckElementsOneOf(names ...string) bool {
 		}
 	}
 
+	return slices.Collect(maps.Keys(foundNames)), true
+}
+
+func (elt *Element) CheckElementsOneOf(names ...string) bool {
+	foundNames, ok := elt.uniqueElementNames(nil, names)
+	if !ok {
+		return false
+	}
+
 	if len(foundNames) == 0 {
 		elt.AddMissingElementError(nil, names)
 		return false
 	} else if len(foundNames) > 1 {
-		elt.AddElementConflictError(nil, slices.Collect(maps.Keys(foundNames)),
-			names)
+		elt.AddElementConflictError(nil, foundNames, names)
 		return false
 	}
 
@@ -172,29 +184,13 @@ func (elt *Element) CheckElementsOneOf(names ...string) bool {
 }
 
 func (elt *Element) CheckElementsMaybeOneOf(names ...string) bool {
-	block := elt.CheckTypeBlock()
-	if block == nil {
+	foundNames, ok := elt.uniqueElementNames(nil, names)
+	if !ok {
 		return false
 	}
 
-	foundNames := make(map[string]struct{})
-
-	for _, child := range block.Elements {
-		switch content := child.Content.(type) {
-		case *Block:
-			if slices.Contains(names, content.Type) {
-				foundNames[content.Type] = struct{}{}
-			}
-		case *Entry:
-			if slices.Contains(names, content.Name) {
-				foundNames[content.Name] = struct{}{}
-			}
-		}
-	}
-
 	if len(foundNames) > 1 {
-		elt.AddElementConflictError(nil, slices.Collect(maps.Keys(foundNames)),
-			names)
+		elt.AddElementConflictError(nil, foundNames, names)
 		return false
 	}
 
@@ -202,26 +198,16 @@ func (elt *Element) CheckElementsMaybeOneOf(names ...string) bool {
 }
 
 func (elt *Element) CheckBlocksOneOf(btypes ...string) bool {
-	block := elt.CheckTypeBlock()
-	if block == nil {
+	foundNames, ok := elt.uniqueElementNames(ref(ElementTypeBlock), btypes)
+	if !ok {
 		return false
 	}
 
-	var foundBlockTypes []string
-
-	for _, child := range block.Elements {
-		if block, ok := child.Content.(*Block); ok {
-			if slices.Contains(btypes, block.Type) {
-				foundBlockTypes = append(foundBlockTypes, block.Type)
-			}
-		}
-	}
-
-	if len(foundBlockTypes) == 0 {
-		elt.AddMissingElementError(Ref(ElementTypeBlock), btypes)
+	if len(foundNames) == 0 {
+		elt.AddMissingElementError(ref(ElementTypeBlock), btypes)
 		return false
-	} else if len(foundBlockTypes) > 1 {
-		elt.AddElementConflictError(Ref(ElementTypeBlock), foundBlockTypes, btypes)
+	} else if len(foundNames) > 1 {
+		elt.AddElementConflictError(ref(ElementTypeBlock), foundNames, btypes)
 		return false
 	}
 
@@ -229,24 +215,13 @@ func (elt *Element) CheckBlocksOneOf(btypes ...string) bool {
 }
 
 func (elt *Element) CheckBlocksMaybeOneOf(btypes ...string) bool {
-	block := elt.CheckTypeBlock()
-	if block == nil {
+	foundNames, ok := elt.uniqueElementNames(ref(ElementTypeBlock), btypes)
+	if !ok {
 		return false
 	}
 
-	var foundBlockTypes []string
-
-	for _, child := range block.Elements {
-		if block, ok := child.Content.(*Block); ok {
-			if slices.Contains(btypes, block.Type) {
-				foundBlockTypes = append(foundBlockTypes, block.Type)
-			}
-		}
-	}
-
-	if len(foundBlockTypes) > 1 {
-		elt.AddElementConflictError(Ref(ElementTypeBlock), foundBlockTypes,
-			btypes)
+	if len(foundNames) > 1 {
+		elt.AddElementConflictError(ref(ElementTypeBlock), foundNames, btypes)
 		return false
 	}
 
@@ -254,27 +229,16 @@ func (elt *Element) CheckBlocksMaybeOneOf(btypes ...string) bool {
 }
 
 func (elt *Element) CheckEntriesOneOf(names ...string) bool {
-	block := elt.CheckTypeBlock()
-	if block == nil {
+	foundNames, ok := elt.uniqueElementNames(ref(ElementTypeEntry), names)
+	if !ok {
 		return false
-	}
-
-	foundNames := make(map[string]struct{})
-
-	for _, child := range block.Elements {
-		if entry, ok := child.Content.(*Entry); ok {
-			if slices.Contains(names, entry.Name) {
-				foundNames[entry.Name] = struct{}{}
-			}
-		}
 	}
 
 	if len(foundNames) == 0 {
-		elt.AddMissingElementError(Ref(ElementTypeEntry), names)
+		elt.AddMissingElementError(ref(ElementTypeEntry), names)
 		return false
 	} else if len(foundNames) > 1 {
-		elt.AddElementConflictError(Ref(ElementTypeEntry),
-			slices.Collect(maps.Keys(foundNames)), names)
+		elt.AddElementConflictError(ref(ElementTypeEntry), foundNames, names)
 		return false
 	}
 
@@ -339,7 +303,7 @@ func (elt *Element) Block(btype string) *Element {
 func (elt *Element) NamedBlock(btype, name string) *Element {
 	block := elt.MaybeNamedBlock(btype, name)
 	if block == nil {
-		elt.AddMissingElementError(Ref(ElementTypeBlock), []string{btype})
+		elt.AddMissingElementError(ref(ElementTypeBlock), []string{btype})
 		return nil
 	}
 
@@ -402,7 +366,7 @@ func (elt *Element) Entries(name string) []*Element {
 func (elt *Element) Entry(name string) *Element {
 	entry := elt.MaybeEntry(name)
 	if entry == nil {
-		elt.AddMissingElementError(Ref(ElementTypeEntry), []string{name})
+		elt.AddMissingElementError(ref(ElementTypeEntry), []string{name})
 		return nil
 	}
 
