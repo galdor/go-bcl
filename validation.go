@@ -95,7 +95,7 @@ func (elt *Element) AddSimpleValidationError(format string, args ...any) error {
 }
 
 type MissingElementError struct {
-	ElementType ElementType
+	ElementType *ElementType
 	Names       []string
 }
 
@@ -105,16 +105,20 @@ func (err *MissingElementError) Error() string {
 		names[i] = fmt.Sprintf("%q", name)
 	}
 
-	if err.ElementType == ElementTypeBlock {
+	if err.ElementType == nil {
+		return fmt.Sprintf("block must contain an element named %s or a "+
+			"block of this type", WordsEnumerationOr(names))
+	} else if *err.ElementType == ElementTypeBlock {
 		return fmt.Sprintf("block must contain a block of type %s",
 			WordsEnumerationOr(names))
 	} else {
 		return fmt.Sprintf("block must contain %s named %s",
-			WordWithArticle(string(err.ElementType)), WordsEnumerationOr(names))
+			WordWithArticle(string(*err.ElementType)),
+			WordsEnumerationOr(names))
 	}
 }
 
-func (elt *Element) AddMissingElementError(eltType ElementType, names []string) error {
+func (elt *Element) AddMissingElementError(eltType *ElementType, names []string) error {
 	return elt.AddValidationError(&MissingElementError{
 		ElementType: eltType,
 		Names:       names,
@@ -148,7 +152,7 @@ func (elt *Element) AddMissingBlockNameError() error {
 }
 
 type ElementConflictError struct {
-	ElementType  ElementType
+	ElementType  *ElementType
 	ElementNames []string
 	Names        []string
 }
@@ -164,7 +168,12 @@ func (err *ElementConflictError) Error() string {
 		names[i] = fmt.Sprintf("%q", name)
 	}
 
-	if err.ElementType == ElementTypeBlock {
+	if err.ElementType == nil {
+		return fmt.Sprintf("block contains %s %s but must only "+
+			"contain one element %s",
+			PluralizeWord("element", len(eltNames)),
+			WordsEnumerationAnd(eltNames), WordsEnumerationOr(names))
+	} else if *err.ElementType == ElementTypeBlock {
 		return fmt.Sprintf("block contains blocks of type %s but must only "+
 			"contain one block of type %s",
 			WordsEnumerationAnd(eltNames), WordsEnumerationOr(names))
@@ -175,7 +184,7 @@ func (err *ElementConflictError) Error() string {
 	}
 }
 
-func (elt *Element) AddElementConflictError(eltType ElementType, eltNames, names []string) error {
+func (elt *Element) AddElementConflictError(eltType *ElementType, eltNames, names []string) error {
 	return elt.AddValidationError(&ElementConflictError{
 		ElementType:  eltType,
 		ElementNames: eltNames,
@@ -221,6 +230,26 @@ func (elt *Element) AddInvalidEntryMinNbValuesError(min int) error {
 	return elt.AddValidationError(&InvalidEntryMinNbValuesError{
 		NbValues: len(elt.Content.(*Entry).Values),
 		Min:      min,
+	})
+}
+
+type InvalidEntryMinMaxNbValuesError struct {
+	NbValues int
+	Min      int
+	Max      int
+}
+
+func (err *InvalidEntryMinMaxNbValuesError) Error() string {
+	return fmt.Sprintf("entry has %d %s but should have between %d and %d %s",
+		err.NbValues, PluralizeWord("value", err.NbValues),
+		err.Min, err.Max, PluralizeWord("value", err.Max))
+}
+
+func (elt *Element) AddInvalidEntryMinMaxNbValuesError(min, max int) error {
+	return elt.AddValidationError(&InvalidEntryMinMaxNbValuesError{
+		NbValues: len(elt.Content.(*Entry).Values),
+		Min:      min,
+		Max:      max,
 	})
 }
 

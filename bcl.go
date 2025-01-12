@@ -5,6 +5,8 @@ import (
 	"io"
 	"reflect"
 	"slices"
+
+	"maps"
 )
 
 type ElementType string
@@ -71,6 +73,16 @@ func (elt *Element) Type() (t ElementType) {
 	return
 }
 
+func (elt *Element) IsBlock() bool {
+	_, ok := elt.Content.(*Block)
+	return ok
+}
+
+func (elt *Element) IsEntry() bool {
+	_, ok := elt.Content.(*Entry)
+	return ok
+}
+
 func (elt *Element) Id() (id string) {
 	switch content := elt.Content.(type) {
 	case *Block:
@@ -126,6 +138,69 @@ func (elt *Element) CheckTypeEntry() *Entry {
 	return entry
 }
 
+func (elt *Element) CheckElementsOneOf(names ...string) bool {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return false
+	}
+
+	foundNames := make(map[string]struct{})
+
+	for _, child := range block.Elements {
+		switch content := child.Content.(type) {
+		case *Block:
+			if slices.Contains(names, content.Type) {
+				foundNames[content.Type] = struct{}{}
+			}
+		case *Entry:
+			if slices.Contains(names, content.Name) {
+				foundNames[content.Name] = struct{}{}
+			}
+		}
+	}
+
+	if len(foundNames) == 0 {
+		elt.AddMissingElementError(nil, names)
+		return false
+	} else if len(foundNames) > 1 {
+		elt.AddElementConflictError(nil, slices.Collect(maps.Keys(foundNames)),
+			names)
+		return false
+	}
+
+	return true
+}
+
+func (elt *Element) CheckElementsMaybeOneOf(names ...string) bool {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return false
+	}
+
+	foundNames := make(map[string]struct{})
+
+	for _, child := range block.Elements {
+		switch content := child.Content.(type) {
+		case *Block:
+			if slices.Contains(names, content.Type) {
+				foundNames[content.Type] = struct{}{}
+			}
+		case *Entry:
+			if slices.Contains(names, content.Name) {
+				foundNames[content.Name] = struct{}{}
+			}
+		}
+	}
+
+	if len(foundNames) > 1 {
+		elt.AddElementConflictError(nil, slices.Collect(maps.Keys(foundNames)),
+			names)
+		return false
+	}
+
+	return true
+}
+
 func (elt *Element) CheckBlocksOneOf(btypes ...string) bool {
 	block := elt.CheckTypeBlock()
 	if block == nil {
@@ -143,10 +218,10 @@ func (elt *Element) CheckBlocksOneOf(btypes ...string) bool {
 	}
 
 	if len(foundBlockTypes) == 0 {
-		elt.AddMissingElementError(ElementTypeBlock, btypes)
+		elt.AddMissingElementError(Ref(ElementTypeBlock), btypes)
 		return false
 	} else if len(foundBlockTypes) > 1 {
-		elt.AddElementConflictError(ElementTypeBlock, foundBlockTypes, btypes)
+		elt.AddElementConflictError(Ref(ElementTypeBlock), foundBlockTypes, btypes)
 		return false
 	}
 
@@ -170,11 +245,72 @@ func (elt *Element) CheckBlocksMaybeOneOf(btypes ...string) bool {
 	}
 
 	if len(foundBlockTypes) > 1 {
-		elt.AddElementConflictError(ElementTypeBlock, foundBlockTypes, btypes)
+		elt.AddElementConflictError(Ref(ElementTypeBlock), foundBlockTypes,
+			btypes)
 		return false
 	}
 
 	return true
+}
+
+func (elt *Element) CheckEntriesOneOf(names ...string) bool {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return false
+	}
+
+	foundNames := make(map[string]struct{})
+
+	for _, child := range block.Elements {
+		if entry, ok := child.Content.(*Entry); ok {
+			if slices.Contains(names, entry.Name) {
+				foundNames[entry.Name] = struct{}{}
+			}
+		}
+	}
+
+	if len(foundNames) == 0 {
+		elt.AddMissingElementError(Ref(ElementTypeEntry), names)
+		return false
+	} else if len(foundNames) > 1 {
+		elt.AddElementConflictError(Ref(ElementTypeEntry),
+			slices.Collect(maps.Keys(foundNames)), names)
+		return false
+	}
+
+	return true
+}
+
+func (elt *Element) Element(name string) *Element {
+	child := elt.MaybeElement(name)
+	if child == nil {
+		elt.AddMissingElementError(nil, []string{name})
+		return nil
+	}
+
+	return child
+}
+
+func (elt *Element) MaybeElement(name string) *Element {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return nil
+	}
+
+	for _, child := range block.Elements {
+		switch content := child.Content.(type) {
+		case *Block:
+			if content.Type == name {
+				return child
+			}
+		case *Entry:
+			if content.Name == name {
+				return child
+			}
+		}
+	}
+
+	return nil
 }
 
 func (elt *Element) Blocks(btype string) []*Element {
@@ -203,7 +339,7 @@ func (elt *Element) Block(btype string) *Element {
 func (elt *Element) NamedBlock(btype, name string) *Element {
 	block := elt.MaybeNamedBlock(btype, name)
 	if block == nil {
-		elt.AddMissingElementError(ElementTypeBlock, []string{btype})
+		elt.AddMissingElementError(Ref(ElementTypeBlock), []string{btype})
 		return nil
 	}
 
@@ -244,10 +380,29 @@ func (elt *Element) BlockName() string {
 	return block.Name
 }
 
+func (elt *Element) Entries(name string) []*Element {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return nil
+	}
+
+	var entries []*Element
+
+	for _, child := range block.Elements {
+		if entry, ok := child.Content.(*Entry); ok {
+			if entry.Name == name {
+				entries = append(entries, child)
+			}
+		}
+	}
+
+	return entries
+}
+
 func (elt *Element) Entry(name string) *Element {
 	entry := elt.MaybeEntry(name)
 	if entry == nil {
-		elt.AddMissingElementError(ElementTypeEntry, []string{name})
+		elt.AddMissingElementError(Ref(ElementTypeEntry), []string{name})
 		return nil
 	}
 
@@ -280,6 +435,15 @@ func (elt *Element) CheckEntryMinValues(name string, min int) bool {
 	return entry.CheckMinValues(min)
 }
 
+func (elt *Element) CheckEntryMinMaxValues(name string, min, max int) bool {
+	entry := elt.Entry(name)
+	if entry == nil {
+		return false
+	}
+
+	return entry.CheckMinMaxValues(min, max)
+}
+
 func (elt *Element) CheckMinValues(min int) bool {
 	entry := elt.CheckTypeEntry()
 	if entry == nil {
@@ -292,6 +456,34 @@ func (elt *Element) CheckMinValues(min int) bool {
 	}
 
 	return true
+}
+
+func (elt *Element) CheckMinMaxValues(min, max int) bool {
+	entry := elt.CheckTypeEntry()
+	if entry == nil {
+		return false
+	}
+
+	if len(entry.Values) < min {
+		elt.AddInvalidEntryMinMaxNbValuesError(min, max)
+		return false
+	}
+
+	if len(entry.Values) > max {
+		elt.AddInvalidEntryMinMaxNbValuesError(min, max)
+		return false
+	}
+
+	return true
+}
+
+func (elt *Element) NbValues() int {
+	entry := elt.CheckTypeEntry()
+	if entry == nil {
+		return -1
+	}
+
+	return len(entry.Values)
 }
 
 func (elt *Element) EntryValues(name string, dests ...any) bool {
@@ -328,6 +520,10 @@ func (elt *Element) MaybeEntryValue(name string, dest any) bool {
 	}
 
 	return entry.Values(dest)
+}
+
+func (elt *Element) Value(dest any) bool {
+	return elt.Values(dest)
 }
 
 func (elt *Element) Values(dests ...any) bool {
