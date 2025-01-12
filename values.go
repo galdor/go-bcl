@@ -61,7 +61,7 @@ func (v *Value) Extract(dest any) error {
 		case ValueTypeBool:
 			*ptr = v.Content.(bool)
 		default:
-			return v.ValueTypeError(ValueTypeBool)
+			return NewValueTypeError(v, ValueTypeBool)
 		}
 
 	case *string:
@@ -71,7 +71,7 @@ func (v *Value) Extract(dest any) error {
 		case ValueTypeSymbol:
 			*ptr = string(v.Content.(Symbol))
 		default:
-			return v.ValueTypeError(ValueTypeString, ValueTypeSymbol)
+			return NewValueTypeError(v, ValueTypeString, ValueTypeSymbol)
 		}
 
 	case *int:
@@ -81,11 +81,11 @@ func (v *Value) Extract(dest any) error {
 			min := int64(math.MinInt)
 			max := int64(math.MaxInt)
 			if i < min || i > max {
-				return v.MinMaxIntegerValueError(min, max)
+				return NewMinMaxIntegerValueError(min, max)
 			}
 			*ptr = int(i)
 		default:
-			return v.ValueTypeError(ValueTypeInteger)
+			return NewValueTypeError(v, ValueTypeInteger)
 		}
 
 	case *int64:
@@ -93,7 +93,7 @@ func (v *Value) Extract(dest any) error {
 		case ValueTypeInteger:
 			*ptr = v.Content.(int64)
 		default:
-			return v.ValueTypeError(ValueTypeInteger)
+			return NewValueTypeError(v, ValueTypeInteger)
 		}
 
 	case *float64:
@@ -105,11 +105,11 @@ func (v *Value) Extract(dest any) error {
 			min := int64(-1) << 53
 			max := int64(1) << 53
 			if i < min || i > max {
-				return v.MinMaxIntegerValueError(min, max)
+				return NewMinMaxIntegerValueError(min, max)
 			}
 			*ptr = float64(i)
 		default:
-			return v.ValueTypeError(ValueTypeFloat, ValueTypeInteger)
+			return NewValueTypeError(v, ValueTypeFloat, ValueTypeInteger)
 		}
 
 	case **regexp.Regexp:
@@ -121,7 +121,7 @@ func (v *Value) Extract(dest any) error {
 			}
 			*ptr = re
 		default:
-			return v.ValueTypeError(ValueTypeString)
+			return NewValueTypeError(v, ValueTypeString)
 		}
 
 	default:
@@ -159,23 +159,19 @@ func (v *Value) Extract(dest any) error {
 	return nil
 }
 
-func (v *Value) ValueError(format string, args ...any) *InvalidValueError {
-	return &InvalidValueError{Err: fmt.Errorf(format, args...)}
-}
-
-func (v *Value) ValueTypeError(expectedTypes ...ValueType) *InvalidValueTypeError {
+func NewValueTypeError(v *Value, expectedTypes ...ValueType) *InvalidValueTypeError {
 	return &InvalidValueTypeError{Type: v.Type(), ExpectedTypes: expectedTypes}
 }
 
-func (v *Value) MinIntegerValueError(min int64) *MinIntegerValueError {
+func NewMinIntegerValueError(min int64) *MinIntegerValueError {
 	return &MinIntegerValueError{Min: min}
 }
 
-func (v *Value) MaxIntegerValueError(max int64) *MaxIntegerValueError {
+func NewMaxIntegerValueError(max int64) *MaxIntegerValueError {
 	return &MaxIntegerValueError{Max: max}
 }
 
-func (v *Value) MinMaxIntegerValueError(min, max int64) *MinMaxIntegerValueError {
+func NewMinMaxIntegerValueError(min, max int64) *MinMaxIntegerValueError {
 	return &MinMaxIntegerValueError{Min: min, Max: max}
 }
 
