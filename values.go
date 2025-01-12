@@ -117,7 +117,7 @@ func (v *Value) Extract(dest any) error {
 		case ValueTypeString:
 			re, err := regexp.Compile(v.Content.(string))
 			if err != nil {
-				return v.ValueError("invalid regexp: %w", err)
+				return fmt.Errorf("invalid regexp: %w", err)
 			}
 			*ptr = re
 		default:
