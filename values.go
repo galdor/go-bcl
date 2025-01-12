@@ -178,3 +178,31 @@ func (v *Value) MaxIntegerValueError(max int64) *MaxIntegerValueError {
 func (v *Value) MinMaxIntegerValueError(min, max int64) *MinMaxIntegerValueError {
 	return &MinMaxIntegerValueError{Min: min, Max: max}
 }
+
+type ValueValidationFunc func(any) error
+
+type ValidatableValue struct {
+	Dest           any
+	ValidationFunc ValueValidationFunc
+}
+
+func (v *ValidatableValue) ReadBCLValue(value *Value) error {
+	if err := value.Extract(v.Dest); err != nil {
+		return err
+	}
+
+	dv := reflect.ValueOf(v.Dest)
+	if dv.Kind() != reflect.Pointer {
+		panic(fmt.Sprintf("unhandled non-pointer value destination of type %T",
+			v.Dest))
+	}
+
+	return v.ValidationFunc(dv.Elem().Interface())
+}
+
+func WithValueValidation(dest any, fn ValueValidationFunc) *ValidatableValue {
+	return &ValidatableValue{
+		Dest:           dest,
+		ValidationFunc: fn,
+	}
+}
