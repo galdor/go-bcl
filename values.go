@@ -221,3 +221,60 @@ func WithValueValidation(dest any, fn ValueValidationFunc) *ValidatableValue {
 		ValidationFunc: fn,
 	}
 }
+
+func ValidatePositiveInteger(v any) error {
+	// This kind of function is a good example of how badly designed Go is
+
+	var i int64
+	var set bool
+
+	switch iv := v.(type) {
+	case int:
+		i = int64(iv)
+		set = true
+	case int8:
+		i = int64(iv)
+		set = true
+	case int16:
+		i = int64(iv)
+		set = true
+	case int32:
+		i = int64(iv)
+		set = true
+	case int64:
+		i = int64(iv)
+		set = true
+
+	case *int:
+		if iv != nil {
+			i = int64(*iv)
+			set = true
+		}
+	case *int8:
+		if iv != nil {
+			i = int64(*iv)
+			set = true
+		}
+	case *int16:
+		if iv != nil {
+			i = int64(*iv)
+			set = true
+		}
+	case *int32:
+		if iv != nil {
+			i = int64(*iv)
+			set = true
+		}
+	case *int64:
+		if iv != nil {
+			i = int64(*iv)
+			set = true
+		}
+	}
+
+	if set && i <= 0 {
+		return fmt.Errorf("integer must be greater than zero")
+	}
+
+	return nil
+}
