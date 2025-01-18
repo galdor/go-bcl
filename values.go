@@ -1,10 +1,12 @@
 package bcl
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
 	"regexp"
+	"time"
 )
 
 type ValueType string
@@ -110,6 +112,24 @@ func (v *Value) Extract(dest any) error {
 			*ptr = float64(i)
 		default:
 			return NewValueTypeError(v, ValueTypeFloat, ValueTypeInteger)
+		}
+
+	case *time.Duration:
+		switch vt {
+		case ValueTypeInteger:
+			i := v.Content.(int64)
+			if i < 0 {
+				return errors.New("invalid negative duration")
+			}
+			*ptr = time.Duration(i) * time.Second
+		case ValueTypeFloat:
+			f := v.Content.(float64)
+			if f < 0.0 {
+				return errors.New("invalid negative duration")
+			}
+			*ptr = time.Duration(f * float64(time.Second))
+		default:
+			return NewValueTypeError(v, ValueTypeString)
 		}
 
 	case **regexp.Regexp:
