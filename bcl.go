@@ -98,24 +98,24 @@ func (elt *Element) Id() (id string) {
 	return
 }
 
-func (doc *Document) Blocks(btype string) []*Element {
-	return doc.TopLevel.Blocks(btype)
+func (doc *Document) FindBlocks(btype string) []*Element {
+	return doc.TopLevel.FindBlocks(btype)
 }
 
-func (doc *Document) Block(btype string) *Element {
-	return doc.TopLevel.Block(btype)
+func (doc *Document) MustFindBlock(btype string) *Element {
+	return doc.TopLevel.MustFindBlock(btype)
 }
 
-func (doc *Document) NamedBlock(btype, name string) *Element {
-	return doc.TopLevel.NamedBlock(btype, name)
+func (doc *Document) FindBlock(btype string) *Element {
+	return doc.TopLevel.FindBlock(btype)
 }
 
-func (doc *Document) MaybeBlock(btype string) *Element {
-	return doc.TopLevel.MaybeBlock(btype)
+func (doc *Document) MustFindNamedBlock(btype, name string) *Element {
+	return doc.TopLevel.MustFindNamedBlock(btype, name)
 }
 
-func (doc *Document) MaybeNamedBlock(btype, name string) *Element {
-	return doc.TopLevel.MaybeNamedBlock(btype, name)
+func (doc *Document) FindNamedBlock(btype, name string) *Element {
+	return doc.TopLevel.FindNamedBlock(btype, name)
 }
 
 func (elt *Element) CheckTypeBlock() *Block {
@@ -245,8 +245,32 @@ func (elt *Element) CheckEntriesOneOf(names ...string) bool {
 	return true
 }
 
-func (elt *Element) Element(name string) *Element {
-	child := elt.MaybeElement(name)
+func (elt *Element) FindElements(name string) []*Element {
+	block := elt.CheckTypeBlock()
+	if block == nil {
+		return nil
+	}
+
+	var elts []*Element
+
+	for _, child := range block.Elements {
+		switch content := child.Content.(type) {
+		case *Block:
+			if content.Type == name {
+				elts = append(elts, child)
+			}
+		case *Entry:
+			if content.Name == name {
+				elts = append(elts, child)
+			}
+		}
+	}
+
+	return elts
+}
+
+func (elt *Element) MustFindElement(name string) *Element {
+	child := elt.FindElement(name)
 	if child == nil {
 		elt.AddMissingElementError(nil, []string{name})
 		return nil
@@ -255,7 +279,7 @@ func (elt *Element) Element(name string) *Element {
 	return child
 }
 
-func (elt *Element) MaybeElement(name string) *Element {
+func (elt *Element) FindElement(name string) *Element {
 	block := elt.CheckTypeBlock()
 	if block == nil {
 		return nil
@@ -277,7 +301,7 @@ func (elt *Element) MaybeElement(name string) *Element {
 	return nil
 }
 
-func (elt *Element) Blocks(btype string) []*Element {
+func (elt *Element) FindBlocks(btype string) []*Element {
 	block := elt.CheckTypeBlock()
 	if block == nil {
 		return nil
@@ -296,12 +320,16 @@ func (elt *Element) Blocks(btype string) []*Element {
 	return blocks
 }
 
-func (elt *Element) Block(btype string) *Element {
-	return elt.NamedBlock(btype, "")
+func (elt *Element) MustFindBlock(btype string) *Element {
+	return elt.MustFindNamedBlock(btype, "")
 }
 
-func (elt *Element) NamedBlock(btype, name string) *Element {
-	block := elt.MaybeNamedBlock(btype, name)
+func (elt *Element) FindBlock(btype string) *Element {
+	return elt.FindNamedBlock(btype, "")
+}
+
+func (elt *Element) MustFindNamedBlock(btype, name string) *Element {
+	block := elt.FindNamedBlock(btype, name)
 	if block == nil {
 		elt.AddMissingElementError(ref(ElementTypeBlock), []string{btype})
 		return nil
@@ -310,11 +338,7 @@ func (elt *Element) NamedBlock(btype, name string) *Element {
 	return block
 }
 
-func (elt *Element) MaybeBlock(btype string) *Element {
-	return elt.MaybeNamedBlock(btype, "")
-}
-
-func (elt *Element) MaybeNamedBlock(btype, name string) *Element {
+func (elt *Element) FindNamedBlock(btype, name string) *Element {
 	block := elt.CheckTypeBlock()
 	if block == nil {
 		return nil
@@ -344,7 +368,7 @@ func (elt *Element) BlockName() string {
 	return block.Name
 }
 
-func (elt *Element) Entries(name string) []*Element {
+func (elt *Element) FindEntries(name string) []*Element {
 	block := elt.CheckTypeBlock()
 	if block == nil {
 		return nil
@@ -363,8 +387,8 @@ func (elt *Element) Entries(name string) []*Element {
 	return entries
 }
 
-func (elt *Element) Entry(name string) *Element {
-	entry := elt.MaybeEntry(name)
+func (elt *Element) MustFindEntry(name string) *Element {
+	entry := elt.FindEntry(name)
 	if entry == nil {
 		elt.AddMissingElementError(ref(ElementTypeEntry), []string{name})
 		return nil
@@ -373,7 +397,7 @@ func (elt *Element) Entry(name string) *Element {
 	return entry
 }
 
-func (elt *Element) MaybeEntry(name string) *Element {
+func (elt *Element) FindEntry(name string) *Element {
 	block := elt.CheckTypeBlock()
 	if block == nil {
 		return nil
@@ -391,7 +415,7 @@ func (elt *Element) MaybeEntry(name string) *Element {
 }
 
 func (elt *Element) CheckEntryMinValues(name string, min int) bool {
-	entry := elt.Entry(name)
+	entry := elt.MustFindEntry(name)
 	if entry == nil {
 		return false
 	}
@@ -400,7 +424,7 @@ func (elt *Element) CheckEntryMinValues(name string, min int) bool {
 }
 
 func (elt *Element) CheckEntryMinMaxValues(name string, min, max int) bool {
-	entry := elt.Entry(name)
+	entry := elt.MustFindEntry(name)
 	if entry == nil {
 		return false
 	}
@@ -451,7 +475,7 @@ func (elt *Element) NbValues() int {
 }
 
 func (elt *Element) EntryValues(name string, dests ...any) bool {
-	entry := elt.Entry(name)
+	entry := elt.MustFindEntry(name)
 	if entry == nil {
 		return false
 	}
@@ -460,7 +484,7 @@ func (elt *Element) EntryValues(name string, dests ...any) bool {
 }
 
 func (elt *Element) EntryValue(name string, dest any) bool {
-	entry := elt.Entry(name)
+	entry := elt.MustFindEntry(name)
 	if entry == nil {
 		return false
 	}
@@ -469,7 +493,7 @@ func (elt *Element) EntryValue(name string, dest any) bool {
 }
 
 func (elt *Element) MaybeEntryValues(name string, dests ...any) bool {
-	entry := elt.MaybeEntry(name)
+	entry := elt.FindEntry(name)
 	if entry == nil {
 		return true
 	}
@@ -478,7 +502,7 @@ func (elt *Element) MaybeEntryValues(name string, dests ...any) bool {
 }
 
 func (elt *Element) MaybeEntryValue(name string, dest any) bool {
-	entry := elt.MaybeEntry(name)
+	entry := elt.FindEntry(name)
 	if entry == nil {
 		return true
 	}
