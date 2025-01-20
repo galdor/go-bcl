@@ -56,9 +56,21 @@ func (doc *Document) ValidationErrors() *ValidationErrors {
 			errs = append(errs, verr)
 		}
 
+		if elt.readStatus == ElementReadStatusUnread {
+			errs = append(errs, ValidationError{
+				Err:      fmt.Errorf("invalid %s %q", elt.Type(), elt.Name()),
+				Location: &elt.Location,
+			})
+		} else if elt.readStatus == ElementReadStatusIgnored {
+			errs = append(errs, ValidationError{
+				Err:      fmt.Errorf("ignored %s %q", elt.Type(), elt.Name()),
+				Location: &elt.Location,
+			})
+		}
+
 		if block, ok := elt.Content.(*Block); ok {
-			for _, elt2 := range block.Elements {
-				walk(elt2)
+			for _, child := range block.Elements {
+				walk(child)
 			}
 		}
 	}

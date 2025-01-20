@@ -23,10 +23,20 @@ type Document struct {
 	lines []string
 }
 
+type ElementReadStatus string
+
+const (
+	ElementReadStatusRead    ElementReadStatus = "read"
+	ElementReadStatusUnread  ElementReadStatus = "unread"
+	ElementReadStatusIgnored ElementReadStatus = "ignored"
+)
+
 type Element struct {
 	Location            Span
 	Content             any // *Block or *Entry
 	FollowedByEmptyLine bool
+
+	readStatus ElementReadStatus
 
 	validationErrors []error
 }
@@ -52,12 +62,32 @@ func Parse(data []byte, source string) (*Document, error) {
 
 	doc.lines = p.lines
 
+	doc.ResetReadStatus()
+
 	return doc, nil
 }
 
 func (doc *Document) Print(w io.Writer) error {
 	p := newPrinter(w, doc)
 	return p.Print()
+}
+
+func (doc *Document) ResetReadStatus() {
+	var reset func(*Element)
+	reset = func(elt *Element) {
+		elt.readStatus = ElementReadStatusUnread
+
+		if block, ok := elt.Content.(*Block); ok {
+			for _, child := range block.Elements {
+				reset(child)
+			}
+		}
+	}
+
+	reset(doc.TopLevel)
+
+	// The top-level element is never read directly but is obviously valid
+	doc.TopLevel.readStatus = ElementReadStatusRead
 }
 
 func (elt *Element) Type() (t ElementType) {
@@ -83,10 +113,25 @@ func (elt *Element) IsEntry() bool {
 	return ok
 }
 
+func (elt *Element) Name() (id string) {
+	switch content := elt.Content.(type) {
+	case *Block:
+		id = content.Type
+	case *Entry:
+		id = content.Name
+	default:
+		panic(fmt.Sprintf("unhandled element content %#v (%T)", elt, elt))
+	}
+
+	return
+}
+
 func (elt *Element) Id() (id string) {
 	switch content := elt.Content.(type) {
 	case *Block:
-		if content.Name != "" {
+		if content.Name == "" {
+			id = content.Type
+		} else {
 			id = content.Type + "." + content.Name
 		}
 	case *Entry:
@@ -254,15 +299,9 @@ func (elt *Element) FindElements(name string) []*Element {
 	var elts []*Element
 
 	for _, child := range block.Elements {
-		switch content := child.Content.(type) {
-		case *Block:
-			if content.Type == name {
-				elts = append(elts, child)
-			}
-		case *Entry:
-			if content.Name == name {
-				elts = append(elts, child)
-			}
+		if child.Name() == name {
+			child.readStatus = ElementReadStatusRead
+			elts = append(elts, child)
 		}
 	}
 
@@ -285,20 +324,20 @@ func (elt *Element) FindElement(name string) *Element {
 		return nil
 	}
 
+	var foundElt *Element
+
 	for _, child := range block.Elements {
-		switch content := child.Content.(type) {
-		case *Block:
-			if content.Type == name {
-				return child
-			}
-		case *Entry:
-			if content.Name == name {
-				return child
+		if child.Name() == name {
+			if foundElt == nil {
+				child.readStatus = ElementReadStatusRead
+				foundElt = child
+			} else {
+				child.readStatus = ElementReadStatusIgnored
 			}
 		}
 	}
 
-	return nil
+	return foundElt
 }
 
 func (elt *Element) FindBlocks(btype string) []*Element {
@@ -312,6 +351,7 @@ func (elt *Element) FindBlocks(btype string) []*Element {
 	for _, child := range block.Elements {
 		if block, ok := child.Content.(*Block); ok {
 			if block.Type == btype {
+				child.readStatus = ElementReadStatusRead
 				blocks = append(blocks, child)
 			}
 		}
@@ -344,15 +384,22 @@ func (elt *Element) FindNamedBlock(btype, name string) *Element {
 		return nil
 	}
 
+	var foundBlock *Element
+
 	for _, child := range block.Elements {
 		if block, ok := child.Content.(*Block); ok {
 			if block.Type == btype && block.Name == name {
-				return child
+				if foundBlock == nil {
+					child.readStatus = ElementReadStatusRead
+					foundBlock = child
+				} else {
+					child.readStatus = ElementReadStatusIgnored
+				}
 			}
 		}
 	}
 
-	return nil
+	return foundBlock
 }
 
 func (elt *Element) BlockName() string {
@@ -379,6 +426,7 @@ func (elt *Element) FindEntries(name string) []*Element {
 	for _, child := range block.Elements {
 		if entry, ok := child.Content.(*Entry); ok {
 			if entry.Name == name {
+				child.readStatus = ElementReadStatusRead
 				entries = append(entries, child)
 			}
 		}
@@ -403,15 +451,22 @@ func (elt *Element) FindEntry(name string) *Element {
 		return nil
 	}
 
+	var foundEntry *Element
+
 	for _, child := range block.Elements {
 		if entry, ok := child.Content.(*Entry); ok {
 			if entry.Name == name {
-				return child
+				if foundEntry == nil {
+					child.readStatus = ElementReadStatusRead
+					foundEntry = child
+				} else {
+					child.readStatus = ElementReadStatusIgnored
+				}
 			}
 		}
 	}
 
-	return nil
+	return foundEntry
 }
 
 func (elt *Element) CheckEntryMinValues(name string, min int) bool {

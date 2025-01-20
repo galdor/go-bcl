@@ -239,8 +239,10 @@ func (p *parser) parseBlockContent(topLevel bool) []*Element {
 			panic(p.syntaxErrorAtPoint(p.endPoint, "truncated block"))
 		}
 
-		if _, ok := elt.Content.(*Block); ok {
-			if id := elt.Id(); id != "" {
+		if block, ok := elt.Content.(*Block); ok {
+			if block.Name != "" {
+				id := elt.Id()
+
 				if prevElt := blockTable[id]; prevElt != nil {
 					panic(p.duplicateErrorAt(elt, prevElt))
 				}
