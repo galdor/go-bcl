@@ -61,6 +61,11 @@ func (doc *Document) ValidationErrors() *ValidationErrors {
 				Err:      fmt.Errorf("invalid %s %q", elt.Type(), elt.Name()),
 				Location: &elt.Location,
 			})
+
+			// A block that is not read cannot contain valid subelements, so
+			// there is no point in producing additional validation errors for
+			// these subelements.
+			return
 		} else if elt.readStatus == ElementReadStatusIgnored {
 			errs = append(errs, ValidationError{
 				Err:      fmt.Errorf("ignored %s %q", elt.Type(), elt.Name()),
