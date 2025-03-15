@@ -16,10 +16,8 @@ const (
 
 type Value struct {
 	Location Span
-	Content  any // either Symbol, bool, string, int64 or float64
+	Content  any // either Symbol, bool, String, int64 or float64
 }
-
-type Symbol string
 
 func (v *Value) Type() (t ValueType) {
 	switch v.Content.(type) {
@@ -27,7 +25,7 @@ func (v *Value) Type() (t ValueType) {
 		t = ValueTypeSymbol
 	case bool:
 		t = ValueTypeBool
-	case string:
+	case String:
 		t = ValueTypeString
 	case int64:
 		t = ValueTypeInteger
@@ -39,4 +37,11 @@ func (v *Value) Type() (t ValueType) {
 	}
 
 	return
+}
+
+type Symbol string
+
+type String struct {
+	String string
+	Sigil  string
 }

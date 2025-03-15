@@ -63,7 +63,7 @@ func (p *printer) printBlock(block *Block) {
 
 	if block.Name != "" {
 		p.print(" ")
-		p.printStringValue(block.Name)
+		p.printStringValue(String{String: block.Name})
 	}
 
 	p.print(" {\n")
@@ -103,7 +103,7 @@ func (p *printer) printValue(value *Value) {
 			p.print("false")
 		}
 
-	case string:
+	case String:
 		p.printStringValue(v)
 
 	case int64:
@@ -117,10 +117,15 @@ func (p *printer) printValue(value *Value) {
 	}
 }
 
-func (p *printer) printStringValue(s string) {
+func (p *printer) printStringValue(s String) {
+	if s.Sigil != "" {
+		p.print("~")
+		p.print(s.Sigil)
+	}
+
 	p.print("\"")
 
-	for _, c := range s {
+	for _, c := range s.String {
 		switch c {
 		case '\a', '\b', '\t', '\n', '\v', '\f', '\r', '"', '\\':
 			p.print("\\")

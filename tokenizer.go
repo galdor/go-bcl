@@ -124,7 +124,7 @@ func (t *tokenizer) readToken() *Token {
 		case c == '+' || c == '-' || (c >= '0' && c <= '9'):
 			return t.readNumberToken()
 
-		case c == '"':
+		case c == '"' || c == '~':
 			return t.readStringToken()
 		}
 
@@ -304,9 +304,41 @@ func (t *tokenizer) readStringToken() *Token {
 	data := t.data
 	start := t.point
 
-	var s []rune
+	var sigil []rune
+
+	if t.data[0] == '~' {
+		t.skip(1)
+
+		// Sigil
+		for {
+			if len(t.data) == 0 {
+				panic(t.syntaxError("truncated string sigil"))
+			}
+
+			point := t.point
+			c := t.peekChar()
+
+			if c == '"' {
+				break
+			}
+
+			if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9') {
+				panic(t.syntaxErrorAtPoint(point,
+					"invalid string sigil character %q", c))
+			}
+
+			sigil = append(sigil, c)
+			t.skip(1)
+		}
+
+		if len(sigil) == 0 {
+			panic(t.syntaxError("empty string sigil"))
+		}
+	}
 
 	t.skip(1) // '"'
+
+	var s []rune
 
 	charLen := 1
 	byteLen := 1
@@ -381,7 +413,7 @@ func (t *tokenizer) readStringToken() *Token {
 		Type:  TokenTypeString,
 		Span:  span,
 		Data:  string(data[:byteLen]),
-		Value: string(s),
+		Value: String{String: string(s), Sigil: string(sigil)},
 	}
 }
 

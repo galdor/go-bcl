@@ -32,7 +32,7 @@ func (v *Value) Extract(dest any) error {
 	case *string:
 		switch vt {
 		case ValueTypeString:
-			*ptr = v.Content.(string)
+			*ptr = v.Content.(String).String
 		case ValueTypeSymbol:
 			*ptr = string(v.Content.(Symbol))
 		default:
@@ -98,7 +98,7 @@ func (v *Value) Extract(dest any) error {
 	case **regexp.Regexp:
 		switch vt {
 		case ValueTypeString:
-			re, err := regexp.Compile(v.Content.(string))
+			re, err := regexp.Compile(v.Content.(String).String)
 			if err != nil {
 				return fmt.Errorf("invalid regexp: %w", err)
 			}

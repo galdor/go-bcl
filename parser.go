@@ -169,7 +169,13 @@ func (p *parser) parseElement() *Element {
 		}
 
 		if valueToken != nil {
-			block.Name = valueToken.Value.(string)
+			s := valueToken.Value.(String)
+			if s.Sigil != "" {
+				panic(p.tokenSyntaxError(valueToken,
+					"invalid block name: block names cannot have a sigil"))
+			}
+
+			block.Name = s.String
 		}
 
 		elt := Element{
@@ -290,7 +296,7 @@ func (p *parser) tokenValue(t *Token) *Value {
 		}
 
 	case TokenTypeString:
-		v = t.Value.(string)
+		v = t.Value.(String)
 
 	case TokenTypeInteger:
 		v = t.Value.(int64)
