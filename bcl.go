@@ -538,15 +538,6 @@ func (elt *Element) EntryValues(name string, dests ...any) bool {
 	return entry.Values(dests...)
 }
 
-func (elt *Element) EntryValue(name string, dest any) bool {
-	entry := elt.MustFindEntry(name)
-	if entry == nil {
-		return false
-	}
-
-	return entry.Values(dest)
-}
-
 func (elt *Element) MaybeEntryValues(name string, dests ...any) bool {
 	entry := elt.FindEntry(name)
 	if entry == nil {
@@ -556,17 +547,24 @@ func (elt *Element) MaybeEntryValues(name string, dests ...any) bool {
 	return entry.Values(dests...)
 }
 
-func (elt *Element) MaybeEntryValue(name string, dest any) bool {
-	entry := elt.FindEntry(name)
+func (elt *Element) Value(i int, dest any) bool {
+	entry := elt.CheckTypeEntry()
 	if entry == nil {
-		return true
+		return false
 	}
 
-	return entry.Values(dest)
-}
+	if i >= len(entry.Values) {
+		elt.AddInvalidEntryMinNbValuesError(i + 1)
+		return false
+	}
 
-func (elt *Element) Value(dest any) bool {
-	return elt.Values(dest)
+	value := entry.Values[i]
+	if err := value.Extract(dest); err != nil {
+		elt.AddInvalidValueError(value, err)
+		return false
+	}
+
+	return true
 }
 
 func (elt *Element) Values(dests ...any) bool {
