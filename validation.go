@@ -295,6 +295,10 @@ type InvalidValueTypeError struct {
 	ExpectedTypes []ValueType
 }
 
+func NewValueTypeError(v *Value, expectedTypes ...ValueType) *InvalidValueTypeError {
+	return &InvalidValueTypeError{Type: v.Type(), ExpectedTypes: expectedTypes}
+}
+
 func (err *InvalidValueTypeError) Error() string {
 	etWithArticles := make([]string, len(err.ExpectedTypes))
 	for i, et := range err.ExpectedTypes {
@@ -303,6 +307,51 @@ func (err *InvalidValueTypeError) Error() string {
 
 	return fmt.Sprintf("value is %s but should be %s",
 		WordWithArticle(string(err.Type)), WordsEnumerationOr(etWithArticles))
+}
+
+type InvalidValueContentError struct {
+	Content          any
+	ExpectedContents []any
+}
+
+func NewValueContentError(v *Value, expectedContents ...any) *InvalidValueContentError {
+	return &InvalidValueContentError{
+		Content:          v.Content,
+		ExpectedContents: expectedContents,
+	}
+}
+
+func (err *InvalidValueContentError) Error() string {
+	formatContent := func(content any) string {
+		switch c := content.(type) {
+		case bool:
+			return strconv.FormatBool(c)
+		case int:
+			return strconv.Itoa(c)
+		case int64:
+			return strconv.FormatInt(c, 10)
+		case float64:
+			return strconv.FormatFloat(c, 'f', -1, 64)
+		case string:
+			return strconv.Quote(c)
+		case String:
+			return strconv.Quote(c.String)
+		case Symbol:
+			return strconv.Quote(string(c))
+		default:
+			panic(fmt.Sprintf("unhandled content %#v (%T)", content, content))
+		}
+	}
+
+	contentString := formatContent(err.Content)
+
+	contentStrings := make([]string, len(err.ExpectedContents))
+	for i, content := range err.ExpectedContents {
+		contentStrings[i] = formatContent(content)
+	}
+
+	return fmt.Sprintf("value is %s but should be %s",
+		contentString, WordsEnumerationOr(contentStrings))
 }
 
 type MinIntegerValueError struct {

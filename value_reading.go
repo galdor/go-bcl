@@ -142,10 +142,6 @@ func (v *Value) Extract(dest any) error {
 	return nil
 }
 
-func NewValueTypeError(v *Value, expectedTypes ...ValueType) *InvalidValueTypeError {
-	return &InvalidValueTypeError{Type: v.Type(), ExpectedTypes: expectedTypes}
-}
-
 func NewMinIntegerValueError(min int64) *MinIntegerValueError {
 	return &MinIntegerValueError{Min: min}
 }

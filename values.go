@@ -45,3 +45,53 @@ type String struct {
 	String string
 	Sigil  string
 }
+
+func (v *Value) IsOneOf(contents ...any) error {
+	valid := false
+	t := v.Type()
+
+	for _, content := range contents {
+		switch c := content.(type) {
+		case bool:
+			if t == ValueTypeBool && v.Content.(bool) == c {
+				valid = true
+				break
+			}
+
+		case string:
+			if t == ValueTypeString && v.Content.(String).String == c {
+				valid = true
+				break
+			}
+
+			if t == ValueTypeSymbol && string(v.Content.(Symbol)) == c {
+				valid = true
+				break
+			}
+
+		case int:
+			if t == ValueTypeInteger && v.Content.(int64) == int64(c) {
+				valid = true
+				break
+			}
+
+		case int64:
+			if t == ValueTypeInteger && v.Content.(int64) == c {
+				valid = true
+				break
+			}
+
+		case float64:
+			if t == ValueTypeFloat && v.Content.(float64) == c {
+				valid = true
+				break
+			}
+		}
+	}
+
+	if !valid {
+		return NewValueContentError(v, contents...)
+	}
+
+	return nil
+}

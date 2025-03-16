@@ -619,3 +619,24 @@ func (elt *Element) Values(dests ...any) bool {
 
 	return valid
 }
+
+func (elt *Element) CheckValueOneOf(i int, values ...any) bool {
+	entry := elt.CheckTypeEntry()
+	if entry == nil {
+		return false
+	}
+
+	if i >= len(entry.Values) {
+		elt.AddInvalidEntryMinNbValuesError(i + 1)
+		return false
+	}
+
+	value := entry.Values[i]
+
+	if err := value.IsOneOf(values...); err != nil {
+		elt.AddInvalidValueError(value, err)
+		return false
+	}
+
+	return true
+}
