@@ -119,7 +119,7 @@ type MissingElementError struct {
 func (err *MissingElementError) Error() string {
 	names := make([]string, len(err.Names))
 	for i, name := range err.Names {
-		names[i] = fmt.Sprintf("%q", name)
+		names[i] = strconv.Quote(name)
 	}
 
 	if err.ElementType == nil {
@@ -177,12 +177,12 @@ type ElementConflictError struct {
 func (err *ElementConflictError) Error() string {
 	eltNames := make([]string, len(err.ElementNames))
 	for i, name := range err.ElementNames {
-		eltNames[i] = fmt.Sprintf("%q", name)
+		eltNames[i] = strconv.Quote(name)
 	}
 
 	names := make([]string, len(err.Names))
 	for i, name := range err.Names {
-		names[i] = fmt.Sprintf("%q", name)
+		names[i] = strconv.Quote(name)
 	}
 
 	if err.ElementType == nil {
