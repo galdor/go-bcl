@@ -39,6 +39,14 @@ func (v *Value) Extract(dest any) error {
 			return NewValueTypeError(v, ValueTypeString, ValueTypeSymbol)
 		}
 
+	case *String:
+		switch vt {
+		case ValueTypeString:
+			*ptr = v.Content.(String)
+		default:
+			return NewValueTypeError(v, ValueTypeString)
+		}
+
 	case *int:
 		switch vt {
 		case ValueTypeInteger:
