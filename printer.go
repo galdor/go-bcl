@@ -97,11 +97,7 @@ func (p *printer) printValue(value *Value) {
 		p.print(string(v))
 
 	case bool:
-		if v {
-			p.print("true")
-		} else {
-			p.print("false")
-		}
+		p.print(strconv.FormatBool(v))
 
 	case String:
 		p.printStringValue(v)
