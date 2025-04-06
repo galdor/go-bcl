@@ -143,6 +143,67 @@ func (elt *Element) Id() (id string) {
 	return
 }
 
+func (elt1 *Element) Equal(elt2 *Element) bool {
+	switch content1 := elt1.Content.(type) {
+	case *Block:
+		if block2, ok := elt2.Content.(*Block); ok {
+			return content1.Equal(block2)
+		}
+
+	case *Entry:
+		if entry2, ok := elt2.Content.(*Entry); ok {
+			return content1.Equal(entry2)
+		}
+
+	default:
+		panic(fmt.Sprintf("unhandled element content %#v (%T)", elt1, elt1))
+	}
+
+	return false
+}
+
+func (block1 *Block) Equal(block2 *Block) bool {
+	if block1.Type != block2.Type {
+		return false
+	}
+
+	if block1.Name != block2.Name {
+		return false
+	}
+
+	n := len(block1.Elements)
+	if len(block2.Elements) != n {
+		return false
+	}
+
+	for i := range n {
+		if !block1.Elements[i].Equal(block2.Elements[i]) {
+			return false
+		}
+	}
+
+	return false
+}
+
+func (entry1 *Entry) Equal(entry2 *Entry) bool {
+	if entry1.Name != entry2.Name {
+		return false
+	}
+
+	n := len(entry1.Values)
+	if len(entry2.Values) != n {
+		return false
+	}
+
+	for i := range n {
+		if !entry1.Values[i].Equal(entry2.Values[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (doc *Document) FindBlocks(btype string) []*Element {
 	return doc.TopLevel.FindBlocks(btype)
 }

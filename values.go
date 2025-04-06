@@ -95,3 +95,31 @@ func (v *Value) IsOneOf(contents ...any) error {
 
 	return nil
 }
+
+func (v1 *Value) Equal(v2 *Value) bool {
+	t := v1.Type()
+	if t != v2.Type() {
+		return false
+	}
+
+	eq := false
+
+	switch t {
+	case ValueTypeSymbol:
+		eq = v1.Content.(Symbol) == v2.Content.(Symbol)
+	case ValueTypeBool:
+		eq = v1.Content.(bool) == v2.Content.(bool)
+	case ValueTypeString:
+		s1 := v1.Content.(String)
+		s2 := v2.Content.(String)
+		eq = s1.Sigil == s2.Sigil && s1.String == s2.String
+	case ValueTypeInteger:
+		eq = v1.Content.(int64) == v2.Content.(int64)
+	case ValueTypeFloat:
+		eq = v1.Content.(float64) == v2.Content.(float64)
+	default:
+		panic(fmt.Sprintf("unhandled value type %q", t))
+	}
+
+	return eq
+}
