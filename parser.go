@@ -24,13 +24,11 @@ func (p *parser) Parse() (doc *Document, err error) {
 	defer func() {
 		if v := recover(); v != nil {
 			if verr, ok := v.(error); ok {
-				err = ParseError{
-					Err:   verr,
-					Lines: p.lines,
-				}
-			} else {
-				panic(v)
+				err = ParseError{Err: verr, Lines: p.lines}
+				return
 			}
+
+			panic(v)
 		}
 	}()
 
