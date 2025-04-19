@@ -339,7 +339,8 @@ func (err *InvalidValueContentError) Error() string {
 		case Symbol:
 			return strconv.Quote(string(c))
 		default:
-			panic(fmt.Sprintf("unhandled content %#v (%T)", content, content))
+			panic(fmt.Sprintf("unhandled value content %#v (%T)",
+				content, content))
 		}
 	}
 
