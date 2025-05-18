@@ -334,6 +334,20 @@ func (elt *Element) CheckBlocksMaybeOneOf(btypes ...string) bool {
 	return true
 }
 
+func (elt *Element) CheckEntriesMaybeOneOf(names ...string) bool {
+	foundNames, ok := elt.uniqueElementNames(ref(ElementTypeEntry), names)
+	if !ok {
+		return false
+	}
+
+	if len(foundNames) > 1 {
+		elt.AddElementConflictError(ref(ElementTypeEntry), foundNames, names)
+		return false
+	}
+
+	return true
+}
+
 func (elt *Element) CheckEntriesOneOf(names ...string) bool {
 	foundNames, ok := elt.uniqueElementNames(ref(ElementTypeEntry), names)
 	if !ok {
