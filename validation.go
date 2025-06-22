@@ -257,9 +257,16 @@ type InvalidEntryMinMaxNbValuesError struct {
 }
 
 func (err *InvalidEntryMinMaxNbValuesError) Error() string {
-	return fmt.Sprintf("entry has %d %s but should have between %d and %d %s",
-		err.NbValues, PluralizeWord("value", err.NbValues),
-		err.Min, err.Max, PluralizeWord("value", err.Max))
+	var msg string
+	if err.Min == err.Max {
+		msg = strconv.Itoa(err.Min)
+	} else {
+		msg = fmt.Sprintf("between %d and %d", err.Min, err.Max)
+	}
+
+	return fmt.Sprintf("entry has %d %s but should have %s %s",
+		err.NbValues, PluralizeWord("value", err.NbValues), msg,
+		PluralizeWord("value", err.Max))
 }
 
 func (elt *Element) AddInvalidEntryMinMaxNbValuesError(min, max int) error {

@@ -544,25 +544,48 @@ func (elt *Element) FindEntry(name string) *Element {
 	return foundEntry
 }
 
-func (elt *Element) CheckEntryMinValues(name string, min int) bool {
+func (elt *Element) CheckEntryNbValues(name string, n int) bool {
 	entry := elt.MustFindEntry(name)
 	if entry == nil {
 		return false
 	}
 
-	return entry.CheckMinValues(min)
+	return entry.CheckNbValues(n)
 }
 
-func (elt *Element) CheckEntryMinMaxValues(name string, min, max int) bool {
+func (elt *Element) CheckEntryMinNbValues(name string, min int) bool {
 	entry := elt.MustFindEntry(name)
 	if entry == nil {
 		return false
 	}
 
-	return entry.CheckMinMaxValues(min, max)
+	return entry.CheckMinNbValues(min)
 }
 
-func (elt *Element) CheckMinValues(min int) bool {
+func (elt *Element) CheckEntryMinMaxNbValues(name string, min, max int) bool {
+	entry := elt.MustFindEntry(name)
+	if entry == nil {
+		return false
+	}
+
+	return entry.CheckMinMaxNbValues(min, max)
+}
+
+func (elt *Element) CheckNbValues(n int) bool {
+	entry := elt.CheckTypeEntry()
+	if entry == nil {
+		return false
+	}
+
+	if len(entry.Values) != n {
+		elt.AddInvalidEntryMinMaxNbValuesError(n, n)
+		return false
+	}
+
+	return true
+}
+
+func (elt *Element) CheckMinNbValues(min int) bool {
 	entry := elt.CheckTypeEntry()
 	if entry == nil {
 		return false
@@ -576,7 +599,7 @@ func (elt *Element) CheckMinValues(min int) bool {
 	return true
 }
 
-func (elt *Element) CheckMinMaxValues(min, max int) bool {
+func (elt *Element) CheckMinMaxNbValues(min, max int) bool {
 	entry := elt.CheckTypeEntry()
 	if entry == nil {
 		return false
