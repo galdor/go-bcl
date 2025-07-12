@@ -75,7 +75,12 @@ func (elt *Element) MaybeBlock(btype string, dest any) bool {
 
 func (elt *Element) Extract(dest any) error {
 	if er, ok := dest.(ElementReader); ok {
-		return er.ReadBCLElement(elt)
+		err := er.ReadBCLElement(elt)
+		if err != nil {
+			elt.AddValidationError(err)
+		}
+
+		return err
 	}
 
 	dv := reflect.ValueOf(dest)
